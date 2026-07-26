@@ -1,0 +1,5009 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Assembly Explorer</title>
+    <meta name="description" content="Interactive scroll sequence for product assembly and disassembly.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            background-color: #020617;
+            color: white;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            scroll-behavior: smooth;
+        }
+
+        /* Typography & Utility */
+        .gradient-text {
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+            overflow: hidden;
+        }
+
+        .hero-video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            z-index: -2;
+            transform: translate(-50%, -50%);
+            object-fit: cover;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(2, 6, 23, 0.4);
+            z-index: -1;
+        }
+
+        .hero-content {
+            z-index: 1;
+            position: relative;
+            padding: 0 20px;
+        }
+
+        .hero h1 {
+            font-size: 5rem;
+            font-weight: 800;
+            margin: 0 0 1rem 0;
+            letter-spacing: -0.05em;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: #94a3b8;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: bounce 2s infinite;
+            color: #94a3b8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .scroll-indicator svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            20%,
+            50%,
+            80%,
+            100% {
+                transform: translateY(0) translateX(-50%);
+            }
+
+            40% {
+                transform: translateY(-10px) translateX(-50%);
+            }
+
+            60% {
+                transform: translateY(-5px) translateX(-50%);
+            }
+        }
+
+        /* Sequence Section */
+        .scroll-container {
+            height: 400vh;
+            /* One viewport height per image */
+            position: relative;
+        }
+
+        .sticky-wrapper {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
+        }
+
+        .sequence-image {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            /* Prevents stretching, keeps aspect ratio */
+            opacity: 0;
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: scale(0.95);
+            filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.5));
+        }
+
+        .sequence-image.active {
+            opacity: 1;
+            transform: scale(1);
+            z-index: 5;
+        }
+
+        /* Progress Steps */
+        .steps-indicator {
+            position: absolute;
+            left: 40px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .step-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .step-dot.active {
+            background: #38bdf8;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
+            transform: scale(1.5);
+        }
+
+        /* Text Overlays */
+        .text-overlay-container {
+            position: absolute;
+            right: 10%;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 400px;
+            z-index: 10;
+        }
+
+        .step-text {
+            position: absolute;
+            top: 0;
+            right: 0;
+            opacity: 0;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+            transform: translateY(20px);
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 2rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+        }
+
+        .step-text.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .step-text h2 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+
+        .step-text p {
+            margin: 0;
+            color: #cbd5e1;
+            line-height: 1.6;
+            font-size: 1.1rem;
+        }
+
+        /* Senses Section */
+        .senses-section {
+            padding: 8rem 2rem;
+            background-color: #020617;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .senses-container {
+            display: flex;
+            max-width: 1200px;
+            width: 100%;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4rem;
+        }
+
+        .senses-info-box {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 2.5rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease;
+            position: relative;
+        }
+
+        .senses-info-box:hover {
+            transform: translateY(-5px);
+        }
+
+        .senses-info-box h3 {
+            margin: 0 0 1rem 0;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #f8fafc;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .senses-info-box p {
+            margin: 0;
+            color: #cbd5e1;
+            line-height: 1.7;
+            font-size: 1.15rem;
+        }
+
+        .left-box {
+            text-align: right;
+        }
+
+        .right-box {
+            text-align: left;
+        }
+
+        .senses-gif-container {
+            flex: 0 0 auto;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .senses-gif-container::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150%;
+            height: 150%;
+            background: radial-gradient(circle, rgba(129, 140, 248, 0.15) 0%, rgba(2, 6, 23, 0) 70%);
+            z-index: -1;
+            border-radius: 50%;
+        }
+
+        .senses-gif {
+            max-width: 350px;
+            width: 100%;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(129, 140, 248, 0.2);
+            z-index: 2;
+            position: relative;
+        }
+
+        @media (max-width: 992px) {
+            .senses-container {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .left-box {
+                text-align: center;
+            }
+
+            .right-box {
+                text-align: center;
+            }
+
+            .senses-gif {
+                max-width: 280px;
+            }
+        }
+
+        /* Split Scroll Section */
+        .split-scroll-container {
+            height: 400vh;
+            position: relative;
+            background-color: #130a1c;
+            /* Dark purple */
+        }
+
+        .split-sticky-wrapper {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #130a1c;
+            /* Dark purple */
+        }
+
+        .capsule {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            height: 350px;
+            width: auto;
+            max-width: 250px;
+            object-fit: contain;
+            z-index: 5;
+            filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.6));
+            transform: translate(-50%, -50%);
+            will-change: transform;
+        }
+
+        .connection-text {
+            position: absolute;
+            text-align: center;
+            z-index: 3;
+            max-width: 600px;
+            opacity: 0;
+            transform: scale(0.5);
+            padding: 0 2rem;
+            will-change: transform, opacity;
+        }
+
+        .connection-text h2 {
+            font-size: 3.5rem;
+            margin: 0 0 1rem 0;
+            background: linear-gradient(135deg, #f472b6, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .connection-text p {
+            font-size: 1.25rem;
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        .base-container {
+            position: absolute;
+            top: calc(50% + 25vh + 130px);
+            width: 180px;
+            height: 50px;
+            background: linear-gradient(to bottom, rgba(30, 41, 59, 0.9), #020617);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-top: 2px solid #38bdf8;
+            border-radius: 8px 8px 24px 24px;
+            box-shadow: inset 0 10px 20px rgba(0, 0, 0, 0.5), 0 -5px 25px rgba(56, 189, 248, 0.4);
+            opacity: 0;
+            z-index: 6;
+            transform: translateX(-50%);
+            will-change: opacity;
+        }
+
+        .left-base {
+            left: calc(50% - 30vw);
+        }
+
+        .right-base {
+            left: calc(50% + 30vw);
+        }
+
+        .connecting-line {
+            position: absolute;
+            top: calc(50% + 25vh);
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #38bdf8, #f472b6, #38bdf8, transparent);
+            box-shadow: 0 0 15px #38bdf8, 0 0 30px #f472b6;
+            opacity: 0;
+            z-index: 2;
+            will-change: width, opacity;
+        }
+
+        @media (max-width: 768px) {
+            .connection-text h2 {
+                font-size: 2.5rem;
+            }
+
+            .capsule {
+                height: 250px;
+            }
+
+            .base-container {
+                top: calc(50% + 25vh + 90px);
+                width: 120px;
+            }
+
+            .left-base {
+                left: calc(50% - 35vw);
+            }
+
+            .right-base {
+                left: calc(50% + 35vw);
+            }
+        }
+
+        /* Modularity Section */
+        .modularity-section {
+            min-height: 100vh;
+            background-color: #020617;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8rem 2rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .modularity-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .modularity-header h2 {
+            font-size: 3.5rem;
+            margin: 0 0 1rem 0;
+            background: linear-gradient(135deg, #a855f7, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .modularity-header p {
+            font-size: 1.25rem;
+            color: #94a3b8;
+        }
+
+        .modularity-container {
+            display: flex;
+            flex-direction: row;
+            gap: 4rem;
+            max-width: 1200px;
+            width: 100%;
+            justify-content: center;
+            align-items: stretch;
+        }
+
+        /* Preview Window Container */
+        .modularity-preview {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 28px;
+            padding: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            min-height: 520px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .preview-title {
+            color: #cbd5e1;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 1.5rem;
+        }
+
+        .preview-window {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Glow background in preview */
+        .preview-glow {
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(168, 85, 247, 0.05) 50%, transparent 100%);
+            filter: blur(20px);
+            z-index: 0;
+            pointer-events: none;
+            transition: all 0.5s ease;
+            border-radius: 50%;
+        }
+
+        .preview-img {
+            max-width: 90%;
+            max-height: 350px;
+            object-fit: contain;
+            z-index: 2;
+            transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.5));
+        }
+
+        .preview-details {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            font-weight: 500;
+            text-align: center;
+            background: rgba(30, 41, 59, 0.5);
+            padding: 0.6rem 1.5rem;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .preview-details span {
+            color: #38bdf8;
+            font-weight: 700;
+        }
+
+        /* Controls Panel */
+        .modularity-controls {
+            flex: 1.2;
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+        }
+
+        .control-group h3 {
+            font-size: 1.1rem;
+            color: #cbd5e1;
+            margin: 0 0 1.2rem 0;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group h3::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(148, 163, 184, 0.2), transparent);
+            margin-left: 1rem;
+        }
+
+        .options-grid {
+            display: grid;
+            gap: 1.2rem;
+            width: 100%;
+        }
+
+        .petals-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .bases-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .option-card {
+            background: rgba(30, 41, 59, 0.3);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 20px;
+            padding: 1.25rem;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            padding: 1.5px;
+            background: linear-gradient(135deg, transparent, transparent);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .option-card:hover {
+            transform: translateY(-4px);
+            background: rgba(30, 41, 59, 0.5);
+            border-color: rgba(56, 189, 248, 0.4);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .option-card.active {
+            background: rgba(56, 189, 248, 0.08);
+            border-color: #38bdf8;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.15);
+        }
+
+        .option-card.active::before {
+            background: linear-gradient(135deg, #38bdf8, #a855f7);
+        }
+
+        .option-image-wrapper {
+            width: 100%;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .option-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.3));
+            transition: transform 0.3s ease;
+        }
+
+        .option-card:hover .option-img {
+            transform: scale(1.08);
+        }
+
+        .option-info h4 {
+            font-size: 0.95rem;
+            color: #f8fafc;
+            margin: 0 0 0.3rem 0;
+            font-weight: 600;
+        }
+
+        .option-info p {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin: 0;
+            line-height: 1.3;
+        }
+
+        @media (max-width: 968px) {
+            .modularity-container {
+                flex-direction: column;
+                align-items: center;
+                gap: 3rem;
+            }
+
+            .modularity-preview {
+                width: 100%;
+                max-width: 500px;
+                min-height: 460px;
+            }
+
+            .modularity-controls {
+                width: 100%;
+                max-width: 600px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .petals-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .bases-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .option-card {
+                flex-direction: row;
+                text-align: left;
+                padding: 1rem;
+                gap: 1.5rem;
+            }
+
+            .option-image-wrapper {
+                width: 60px;
+                height: 60px;
+                margin-bottom: 0;
+            }
+
+            .option-info h4 {
+                font-size: 1rem;
+            }
+        }
+
+        /* LED SVG Scroll Section */
+        .led-scroll-container {
+            height: 900vh;
+            background-color: #020617;
+            position: relative;
+        }
+
+        .led-sticky-wrapper {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .room-svg-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .led-scroll-text {
+            position: absolute;
+            z-index: 5;
+            width: 420px;
+            max-width: 90vw;
+            opacity: 0;
+            padding: 2rem;
+            pointer-events: none;
+            /* Transition removed, handled directly by JS requestAnimationFrame */
+        }
+
+        #ledMediumText {
+            top: 25%;
+            left: 8%;
+        }
+
+        #ledFullText {
+            bottom: 25%;
+            right: 8%;
+        }
+
+        .led-scroll-text h2 {
+            font-size: clamp(1.5rem, 2.5vw, 2.2rem);
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .led-scroll-cards {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .led-card {
+            flex: 1;
+            min-width: 250px;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            pointer-events: auto;
+        }
+
+        .led-card h3 {
+            font-size: 1.5rem;
+            color: #f8fafc;
+            margin: 0 0 0.5rem 0;
+        }
+
+        .led-card p {
+            color: #cbd5e1;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .rgbw-gallery {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            margin-bottom: 3rem;
+            pointer-events: auto;
+        }
+
+        .rgbw-image {
+            height: 220px;
+            border-radius: 16px;
+            object-fit: cover;
+            box-shadow: 0 10px 30px rgba(56, 189, 248, 0.3);
+            border: 2px solid rgba(56, 189, 248, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .rgbw-image:hover {
+            transform: scale(1.05);
+            border-color: rgba(56, 189, 248, 0.8);
+        }
+
+        @media (max-width: 768px) {
+            .led-scroll-text h2 {
+                font-size: 2.5rem;
+            }
+
+            .led-scroll-cards {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .rgbw-gallery {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .rgbw-image {
+                height: 200px;
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+
+        /* Bloom Petal Split */
+        .bloom-split {
+            display: flex;
+            gap: 2rem;
+            align-items: stretch;
+            width: 100%;
+            pointer-events: auto;
+        }
+
+        .bloom-card {
+            flex: 1;
+            background: rgba(2, 6, 23, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bloom-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .bloom-card.full::before {
+            background: radial-gradient(ellipse at top left, rgba(56, 189, 248, 0.12), transparent 70%);
+        }
+
+        .bloom-card.medium::before {
+            background: radial-gradient(ellipse at top right, rgba(251, 191, 36, 0.12), transparent 70%);
+        }
+
+        .bloom-card:hover::before {
+            opacity: 1;
+        }
+
+        .bloom-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+        }
+
+        .bloom-card.full {
+            border-color: rgba(56, 189, 248, 0.25);
+        }
+
+        .bloom-card.medium {
+            border-color: rgba(251, 191, 36, 0.25);
+        }
+
+        .bloom-eyebrow {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin: 0 0 0.75rem 0;
+        }
+
+        .bloom-card.full .bloom-eyebrow {
+            color: #38bdf8;
+        }
+
+        .bloom-card.medium .bloom-eyebrow {
+            color: #fbbf24;
+        }
+
+        .bloom-card h3 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #f8fafc;
+            margin: 0 0 0.4rem 0;
+            line-height: 1.2;
+        }
+
+        .bloom-tagline {
+            font-size: 0.95rem;
+            font-style: italic;
+            margin: 0 0 1.5rem 0;
+        }
+
+        .bloom-card.full .bloom-tagline {
+            color: #7dd3fc;
+        }
+
+        .bloom-card.medium .bloom-tagline {
+            color: #fde68a;
+        }
+
+        .bloom-images {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .bloom-images img {
+            flex: 1;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .bloom-card.full .bloom-images img {
+            box-shadow: 0 4px 20px rgba(56, 189, 248, 0.2);
+        }
+
+        .bloom-card.medium .bloom-images img {
+            box-shadow: 0 4px 20px rgba(251, 191, 36, 0.15);
+        }
+
+        .bloom-features {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+
+        .bloom-features li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            font-size: 0.95rem;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .bloom-features li::before {
+            content: '—';
+            flex-shrink: 0;
+            font-weight: 700;
+        }
+
+        .bloom-card.full .bloom-features li::before {
+            color: #38bdf8;
+        }
+
+        .bloom-card.medium .bloom-features li::before {
+            color: #fbbf24;
+        }
+
+        .bloom-led-badge {
+            display: inline-block;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            padding: 0.3rem 0.8rem;
+            border-radius: 999px;
+            margin-bottom: 1.5rem;
+        }
+
+        .bloom-card.full .bloom-led-badge {
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        .bloom-card.medium .bloom-led-badge {
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .bloom-split {
+                flex-direction: column;
+            }
+        }
+
+        /* Tech Section */
+        .tech-section {
+            padding: 8rem 2rem;
+            background-color: #020617;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            z-index: 2;
+        }
+
+        .tech-container {
+            max-width: 1280px;
+            width: 100%;
+        }
+
+        .tech-header {
+            text-align: center;
+            margin-bottom: 5rem;
+        }
+
+        .tech-header h2 {
+            font-size: 3.5rem;
+            margin: 0 0 1rem 0;
+            background: linear-gradient(135deg, #a855f7, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tech-header p {
+            font-size: 1.25rem;
+            color: #94a3b8;
+        }
+
+        .tech-intro {
+            max-width: 800px;
+            margin: 0 auto 5rem auto;
+            text-align: center;
+            color: #cbd5e1;
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+
+        .pcb-split {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2rem;
+            margin: 0 0 5rem 0;
+            background: rgba(15, 23, 42, 0.7);
+            padding: 3rem;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .pcb-col {
+            flex: 1;
+            color: #cbd5e1;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        .pcb-col h3 {
+            font-size: 1.8rem;
+            color: #f8fafc;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .pcb-col ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .pcb-col ul li {
+            position: relative;
+            padding-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .pcb-col ul li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: #38bdf8;
+            font-size: 1.5rem;
+            line-height: 1;
+            top: -2px;
+        }
+
+        .pcb-center {
+            flex: 1.2;
+            display: flex;
+            justify-content: center;
+        }
+
+        .pcb-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 16px;
+            filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.6));
+            transition: transform 0.3s ease;
+        }
+
+        .pcb-image:hover {
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 992px) {
+            .pcb-split {
+                flex-direction: column;
+                padding: 2rem;
+            }
+
+            .pcb-center {
+                order: -1;
+                margin-bottom: 2rem;
+            }
+        }
+
+        .parts-grid {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+            height: 450px;
+        }
+
+        .parts-grid .part-card {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(30, 58, 138, 0.5);
+            border-radius: 20px;
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+            overflow: hidden;
+            cursor: pointer;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .parts-grid .part-card:hover {
+            flex: 4;
+            background: rgba(30, 58, 138, 0.8);
+            border-color: rgba(56, 189, 248, 0.6);
+            box-shadow: 0 10px 40px rgba(30, 58, 138, 0.5);
+        }
+
+        .parts-grid .part-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            transition: transform 0.5s ease;
+        }
+
+        .parts-grid .part-card:hover .part-icon {
+            transform: scale(1.2);
+        }
+
+        .parts-grid .part-card h4 {
+            font-size: 1.25rem;
+            color: #f8fafc;
+            margin: 0;
+            transition: all 0.5s ease;
+        }
+
+        .parts-grid .part-card:hover h4 {
+            margin-bottom: 1rem;
+        }
+
+        .parts-grid .part-content {
+            opacity: 0;
+            max-height: 0;
+            transition: all 0.5s ease;
+            transform: translateY(20px);
+        }
+
+        .parts-grid .part-card:hover .part-content {
+            opacity: 1;
+            max-height: 150px;
+            transform: translateY(0);
+        }
+
+        .parts-grid .part-content p {
+            color: #bfdbfe;
+            font-size: 1rem;
+            line-height: 1.5;
+            margin: 0;
+            padding: 0 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .parts-grid {
+                flex-direction: column;
+                height: auto;
+            }
+        }
+
+        /* Tech Two-Column Interactive Layout */
+        .tech-interactive-layout {
+            display: grid;
+            grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+            gap: 2rem;
+            align-items: start;
+            margin-top: 4rem;
+            width: 100%;
+        }
+
+        .tech-cards-column {
+            position: sticky;
+            top: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            min-width: 0;
+        }
+
+        .tech-cards-column .part-card {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(30, 58, 138, 0.5);
+            border-radius: 14px;
+            padding: 1rem 1.15rem;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            text-align: left;
+            gap: 0.85rem;
+            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            cursor: pointer;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            width: 100%;
+            box-sizing: border-box;
+            flex: none;
+        }
+
+        .tech-cards-column .part-card:hover {
+            background: rgba(30, 58, 138, 0.6);
+            border-color: rgba(56, 189, 248, 0.4);
+            transform: translateX(4px);
+            flex: none;
+        }
+
+        .tech-cards-column .part-card.active-card {
+            border-color: #38bdf8;
+            box-shadow: 0 4px 24px rgba(56, 189, 248, 0.35);
+            background: rgba(30, 58, 138, 0.85);
+            transform: translateX(8px);
+        }
+
+        .tech-cards-column .part-icon {
+            font-size: 1.6rem;
+            flex-shrink: 0;
+            margin-bottom: 0;
+            width: 2.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+        }
+
+        .tech-cards-column .part-icon img {
+            height: 32px;
+            width: auto;
+            max-width: 100%;
+            filter: drop-shadow(0 3px 8px rgba(56, 189, 248, 0.5));
+            border-radius: 6px;
+        }
+
+        .tech-cards-column .part-card.active-card .part-icon {
+            transform: scale(1.1);
+        }
+
+        .tech-cards-column .part-card-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .tech-cards-column .part-card h4 {
+            font-size: 0.95rem;
+            color: #f8fafc;
+            margin: 0 0 0.2rem 0;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+
+        .tech-cards-column .part-content {
+            opacity: 1;
+            max-height: none;
+            transform: none;
+        }
+
+        .tech-cards-column .part-content p {
+            color: #94a3b8;
+            font-size: 0.78rem;
+            line-height: 1.35;
+            margin: 0;
+            padding: 0;
+        }
+
+        .tech-cards-column .part-card-arrow {
+            color: #475569;
+            font-size: 1.15rem;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .tech-cards-column .part-card.active-card .part-card-arrow {
+            color: #38bdf8;
+            transform: translateX(3px);
+        }
+
+        .tech-panel-column {
+            min-height: 400px;
+            min-width: 0;
+        }
+
+        .tech-panel-column .manufacturing-section {
+            max-width: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .tech-panel-column .mfg-header {
+            text-align: left;
+            margin-top: 0;
+            margin-bottom: 1.25rem;
+        }
+
+        .tech-panel-column .mfg-header h3 {
+            font-size: 1.5rem;
+            line-height: 1.3;
+        }
+
+        .tech-panel-column .tech-intro {
+            max-width: none;
+            margin: 0 0 1.5rem 0;
+            text-align: left;
+            font-size: 1rem;
+        }
+
+        .mfg-panel-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            border: 2px dashed rgba(56, 189, 248, 0.15);
+            border-radius: 20px;
+            color: #475569;
+            text-align: center;
+            padding: 3rem;
+            gap: 1rem;
+        }
+
+        .mfg-panel-placeholder .placeholder-icon {
+            font-size: 3rem;
+            opacity: 0.4;
+        }
+
+        .mfg-panel-placeholder p {
+            font-size: 1rem;
+            max-width: 240px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 1100px) {
+            .tech-interactive-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .tech-cards-column {
+                position: relative;
+                top: auto;
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .tech-cards-column .part-card {
+                flex: 1 1 200px;
+                min-width: 180px;
+                transform: none;
+            }
+
+            .tech-cards-column .part-card:hover,
+            .tech-cards-column .part-card.active-card {
+                transform: none;
+            }
+        }
+
+        /* Manufacturing Section */
+        .manufacturing-section {
+            max-width: 1200px;
+            margin: 4rem auto 0 auto;
+            color: #cbd5e1;
+            padding: 2rem 0;
+        }
+
+        .mfg-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            margin-top: 4rem;
+        }
+
+        .mfg-header h3 {
+            font-size: 2rem;
+            color: #f8fafc;
+            margin: 0;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .mfg-stats {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 4rem;
+        }
+
+        .stat-card {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            flex: 1;
+            min-width: 250px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(56, 189, 248, 0.5);
+        }
+
+        .stat-card.highlight {
+            background: rgba(56, 189, 248, 0.1);
+            border-color: #38bdf8;
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #f8fafc;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card.highlight .stat-value {
+            color: #38bdf8;
+        }
+
+        .stat-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #bfdbfe;
+        }
+
+        .stat-sub {
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        .mfg-table-container {
+            overflow-x: auto;
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .mfg-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        /* Tech Section - Connected WiFi Controller App Styles */
+        .tech-app-section {
+            margin-top: 5rem;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            border-radius: 24px;
+            padding: 3.5rem 3rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+
+        .tech-app-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .tech-app-badge {
+            display: inline-block;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: #38bdf8;
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 0.4rem 1rem;
+            border-radius: 999px;
+            margin-bottom: 1rem;
+        }
+
+        .tech-app-header h3 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            margin: 0 0 0.75rem 0;
+            background: linear-gradient(135deg, #38bdf8, #818cf8, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tech-app-header p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .tech-app-grid {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 3.5rem;
+        }
+
+        .tech-app-mockup-wrapper {
+            flex: 0 0 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .tech-app-mockup-wrapper::before {
+            content: '';
+            position: absolute;
+            width: 120%;
+            height: 120%;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.18) 0%, rgba(129, 140, 248, 0.08) 50%, transparent 70%);
+            z-index: 0;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .tech-app-phone {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 290px;
+            border-radius: 36px;
+            overflow: hidden;
+            border: 10px solid #0f172a;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.3), inset 0 0 12px rgba(255, 255, 255, 0.1);
+            background: #020617;
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+        }
+
+        .tech-app-phone:hover {
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: 0 30px 70px rgba(0, 0, 0, 0.9), 0 0 45px rgba(56, 189, 248, 0.45);
+        }
+
+        .tech-app-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+        }
+
+        .tech-app-features {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .tech-app-feature-card {
+            background: rgba(2, 6, 23, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1.25rem;
+            transition: transform 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+        }
+
+        .tech-app-feature-card:hover {
+            transform: translateX(6px);
+            border-color: rgba(56, 189, 248, 0.4);
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .tech-app-feature-icon {
+            font-size: 1.6rem;
+            background: rgba(56, 189, 248, 0.1);
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }
+
+        .tech-app-feature-content h4 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin: 0 0 0.35rem 0;
+        }
+
+        .tech-app-feature-content p {
+            font-size: 0.95rem;
+            color: #cbd5e1;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 992px) {
+            .tech-app-grid {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+
+            .tech-app-feature-card {
+                text-align: left;
+            }
+
+            .tech-app-section {
+                padding: 2.5rem 1.5rem;
+            }
+        }
+
+        .mfg-table th,
+        .mfg-table td {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .mfg-table th {
+            background: rgba(2, 6, 23, 0.5);
+            font-weight: 600;
+            color: #f8fafc;
+            font-size: 1.1rem;
+        }
+
+        .mfg-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .mfg-table tbody tr:hover {
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        .mfg-detail {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        /* Petal Mode CSS */
+        .petal-mode-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 4rem;
+        }
+
+        .mode-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            flex: 1;
+        }
+
+        .mode-btn {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            color: #cbd5e1;
+            padding: 1.2rem 1.5rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn:hover {
+            background: rgba(56, 189, 248, 0.1);
+            border-color: rgba(56, 189, 248, 0.5);
+        }
+
+        .mode-btn.active {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: #38bdf8;
+            color: #f8fafc;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+            transform: translateX(10px);
+        }
+
+        .mode-btn#btn-full.active {
+            background: rgba(168, 85, 247, 0.2);
+            border-color: #a855f7;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+        }
+
+        .mode-btn#btn-lamp.active {
+            background: rgba(250, 204, 21, 0.2);
+            border-color: #facc15;
+            box-shadow: 0 0 20px rgba(250, 204, 21, 0.3);
+        }
+
+        .mode-visual {
+            flex: 1.2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .mode-base-img {
+            max-width: 100%;
+            height: auto;
+            max-height: 280px;
+            filter: drop-shadow(0 15px 25px rgba(0, 0, 0, 0.6));
+            transition: filter 0.5s ease;
+            pointer-events: none;
+        }
+
+        .mode-base-img.glow-full {
+            filter: drop-shadow(0 0 40px rgba(168, 85, 247, 0.8));
+        }
+
+        .mode-base-img.glow-close {
+            filter: drop-shadow(0 0 40px rgba(56, 189, 248, 0.8));
+        }
+
+        .mode-base-img.glow-lamp {
+            filter: drop-shadow(0 0 40px rgba(250, 204, 21, 0.8));
+        }
+
+        .mode-description {
+            flex: 1.2;
+            position: relative;
+            min-height: 220px;
+        }
+
+        .mode-desc-box {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(2, 6, 23, 0.5);
+            padding: 2rem;
+            border-radius: 16px;
+            border-left: 4px solid #38bdf8;
+            box-sizing: border-box;
+        }
+
+        .mode-desc-box.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .mode-desc-box h4 {
+            font-size: 1.4rem;
+            color: #f8fafc;
+            margin: 0 0 1rem 0;
+        }
+
+        .mode-desc-box p {
+            color: #cbd5e1;
+            line-height: 1.6;
+            margin: 0;
+            font-size: 1.05rem;
+        }
+
+        #desc-full {
+            border-color: #a855f7;
+        }
+
+        #desc-close {
+            border-color: #38bdf8;
+        }
+
+        #desc-lamp {
+            border-color: #facc15;
+        }
+
+        @media (max-width: 992px) {
+            .petal-mode-container {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .mode-buttons {
+                width: 100%;
+            }
+
+            .mode-btn {
+                text-align: center;
+            }
+
+            .mode-btn.active {
+                transform: translateY(-5px);
+            }
+
+            .mode-description {
+                width: 100%;
+                min-height: 150px;
+            }
+
+            .mode-desc-box {
+                border-left: none;
+                border-top: 4px solid #38bdf8;
+            }
+
+            #desc-full {
+                border-top-color: #a855f7;
+            }
+
+            #desc-close {
+                border-top-color: #38bdf8;
+            }
+
+            #desc-lamp {
+                border-top-color: #facc15;
+            }
+        }
+
+        .cs-frame {
+            background:
+                linear-gradient(rgba(79, 209, 232, 0.09) 1px, transparent 1px) 0 0 / 100% 32px,
+                linear-gradient(90deg, rgba(79, 209, 232, 0.09) 1px, transparent 1px) 0 0 / 32px 100%,
+                radial-gradient(ellipse at top left, #102845 0%, #0a1826 55%);
+            background-color: #0a1826;
+            padding: 48px 32px 56px;
+            max-width: 1040px;
+            margin: 0 auto;
+            border: 1px solid rgba(79, 209, 232, 0.22);
+            border-radius: 16px;
+            font-family: 'IBM Plex Sans', sans-serif;
+            color: #e8f1f7;
+            text-align: left;
+        }
+
+        .cs-titleblock {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 1px solid rgba(79, 209, 232, 0.22);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .cs-eyebrow {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #4fd1e8;
+            margin: 0 0 8px;
+        }
+
+        .cs-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: clamp(26px, 3.4vw, 38px);
+            line-height: 1.08;
+            margin: 0;
+            color: #e8f1f7;
+            letter-spacing: -0.01em;
+        }
+
+        .cs-title span {
+            color: #ff8c42;
+        }
+
+        .cs-meta {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #5e7891;
+            text-align: right;
+            line-height: 1.6;
+        }
+
+        .cs-meta strong {
+            color: #a9c1d3;
+            font-weight: 500;
+        }
+
+        .cs-crossover-strip {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
+            background: rgba(79, 209, 232, 0.22);
+            border: 1px solid rgba(79, 209, 232, 0.22);
+            margin-bottom: 44px;
+        }
+
+        .cs-crossover-cell {
+            background: #0f2138;
+            padding: 20px 22px;
+        }
+
+        .cs-crossover-cell .label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10.5px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #5e7891;
+            margin-bottom: 10px;
+        }
+
+        .cs-crossover-cell .value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 26px;
+            font-weight: 600;
+            color: #e8f1f7;
+        }
+
+        .cs-crossover-cell.hero {
+            background: linear-gradient(135deg, rgba(255, 140, 66, 0.14), rgba(255, 140, 66, 0.03));
+        }
+
+        .cs-crossover-cell.hero .value {
+            color: #ff8c42;
+            font-size: 30px;
+        }
+
+        .cs-crossover-cell.hero .label {
+            color: #a85c2a;
+        }
+
+        .cs-chart-panel {
+            background: #0f2138;
+            border: 1px solid rgba(79, 209, 232, 0.22);
+            padding: 28px 24px 12px;
+            margin-bottom: 44px;
+        }
+
+        .cs-chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .cs-chart-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 15px;
+            color: #e8f1f7;
+            margin: 0;
+        }
+
+        .cs-legend {
+            display: flex;
+            gap: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #a9c1d3;
+        }
+
+        .cs-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .cs-legend-swatch {
+            width: 14px;
+            height: 3px;
+            display: inline-block;
+        }
+
+        .cs-chart-wrap {
+            position: relative;
+            height: 340px;
+        }
+
+        .cs-section-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #4fd1e8;
+            margin: 0 0 16px;
+        }
+
+        table.cs-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            margin-bottom: 40px;
+        }
+
+        .cs-table thead th {
+            text-align: right;
+            font-weight: 500;
+            color: #5e7891;
+            font-size: 10.5px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 0 14px 12px;
+            border-bottom: 1px solid rgba(79, 209, 232, 0.22);
+        }
+
+        .cs-table thead th:first-child,
+        .cs-table td:first-child {
+            text-align: left;
+        }
+
+        .cs-table td {
+            text-align: right;
+            padding: 12px 14px;
+            color: #a9c1d3;
+            border-bottom: 1px solid rgba(79, 209, 232, 0.09);
+        }
+
+        .cs-table tr.cs-row-total td {
+            color: #e8f1f7;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(79, 209, 232, 0.22);
+            border-top: 1px solid rgba(79, 209, 232, 0.22);
+        }
+
+        .cs-table tr.cs-row-method td:first-child {
+            color: #4fd1e8;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0.02em;
+            padding-top: 22px;
+        }
+
+        .cs-table tr.cs-row-method.molding td:first-child {
+            color: #ff8c42;
+        }
+
+        .cs-winner {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10.5px;
+            letter-spacing: 0.06em;
+            padding: 3px 8px;
+            border: 1px solid currentColor;
+        }
+
+        .cs-winner.fdm {
+            color: #4fd1e8;
+        }
+
+        .cs-winner.molding {
+            color: #ff8c42;
+        }
+
+        .cs-footnote {
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 12.5px;
+            color: #5e7891;
+            line-height: 1.6;
+            border-top: 1px solid rgba(79, 209, 232, 0.22);
+            padding-top: 18px;
+        }
+
+        .cs-footnote strong {
+            color: #a9c1d3;
+        }
+
+        @media (max-width: 640px) {
+            .cs-frame {
+                padding: 32px 16px 40px;
+            }
+
+            .cs-crossover-strip {
+                grid-template-columns: 1fr;
+            }
+
+            .cs-titleblock {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .cs-meta {
+                text-align: left;
+            }
+
+            table.cs-table {
+                font-size: 11.5px;
+            }
+
+            .cs-table td,
+            .cs-table thead th {
+                padding: 10px 8px;
+            }
+        }
+
+        /* Gallery Section */
+        .gallery-section {
+            padding: 8rem 2rem;
+            background-color: #020617;
+            position: relative;
+            z-index: 2;
+        }
+
+        .gallery-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .gallery-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .gallery-header h2 {
+            font-size: 3.5rem;
+            margin: 0;
+            background: linear-gradient(135deg, #a855f7, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+        }
+
+        .gallery-feature {
+            grid-column: 1 / -1;
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 40px rgba(56, 189, 248, 0.08);
+            background: #020617;
+        }
+
+        .gallery-feature video {
+            width: 100%;
+            height: 320px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .gallery-feature-caption {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 2.5rem 1.35rem 1.15rem;
+            background: linear-gradient(transparent, rgba(2, 6, 23, 0.92) 55%);
+            color: #e0f2fe;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            line-height: 1.4;
+            letter-spacing: 0.01em;
+        }
+
+        .gallery-feature-caption span {
+            display: block;
+            margin-bottom: 0.3rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #38bdf8;
+        }
+
+        .gallery-content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: start;
+        }
+
+        .origin-story {
+            font-size: 1.15rem;
+            line-height: 1.8;
+            color: #cbd5e1;
+            padding-right: 2rem;
+        }
+
+        .origin-story p {
+            margin-bottom: 1.5rem;
+        }
+
+        .origin-story p:last-child {
+            margin-bottom: 0;
+        }
+
+        .origin-story .story-beat {
+            padding: 1.15rem 1.25rem;
+            margin: 1.75rem 0;
+            border-left: 3px solid #38bdf8;
+            background: rgba(56, 189, 248, 0.08);
+            border-radius: 0 12px 12px 0;
+            color: #e0f2fe;
+            font-weight: 500;
+        }
+
+        @media (max-width: 960px) {
+            .gallery-content-wrapper {
+                grid-template-columns: 1fr;
+            }
+
+            .origin-story {
+                padding-right: 0;
+            }
+
+            .gallery-feature video {
+                height: 260px;
+            }
+
+            .gallery-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .gallery-item {
+                height: 240px;
+            }
+        }
+
+        .gallery-item {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .gallery-item:hover {
+            transform: translateY(-5px);
+            border-color: rgba(56, 189, 248, 0.5);
+        }
+
+        /* Footer Section */
+        .footer {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #020617;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .footer h2 {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 2rem;
+        }
+
+        .cta-button {
+            padding: 1rem 2.5rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #020617;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            border: none;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.4);
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 3rem;
+            }
+
+            .text-overlay-container {
+                right: 50%;
+                top: auto;
+                bottom: 5%;
+                transform: translateX(50%);
+                width: 90%;
+            }
+
+            .step-text {
+                position: relative;
+                top: auto;
+                right: auto;
+            }
+
+            .steps-indicator {
+                display: none;
+            }
+        }
+
+        /* Market Section */
+        .market-section {
+            padding: 8rem 2rem;
+            background-color: #020617;
+            position: relative;
+            z-index: 2;
+        }
+
+        .market-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .market-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .market-header h2 {
+            font-size: 3rem;
+            margin: 0 0 1rem 0;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .market-header p {
+            font-size: 1.25rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        .market-intro {
+            max-width: 800px;
+            margin: 0 auto 5rem auto;
+            text-align: center;
+            font-size: 1.15rem;
+            line-height: 1.8;
+            color: #cbd5e1;
+            background: rgba(15, 23, 42, 0.4);
+            padding: 2.5rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .market-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2.5rem;
+        }
+
+        .market-card {
+            background: rgba(2, 6, 23, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .market-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(56, 189, 248, 0.4);
+        }
+
+        .market-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .market-card:hover::before {
+            opacity: 1;
+        }
+
+        .market-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3rem;
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.05);
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            pointer-events: none;
+            transition: color 0.3s ease;
+        }
+
+        .market-card:hover .market-number {
+            color: rgba(56, 189, 248, 0.1);
+        }
+
+        .market-card h3 {
+            font-size: 1.4rem;
+            color: #f8fafc;
+            margin: 0 0 1rem 0;
+            position: relative;
+            z-index: 2;
+        }
+
+        .market-card p {
+            color: #94a3b8;
+            line-height: 1.6;
+            margin: 0;
+            font-size: 1.05rem;
+            position: relative;
+            z-index: 2;
+            flex-grow: 1;
+        }
+
+        .market-conclusion {
+            max-width: 1000px;
+            margin: 5.5rem auto 0 auto;
+            padding: 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 4rem;
+            text-align: center;
+            -webkit-text-fill-color: unset;
+            background: none;
+            font-size: inherit;
+            font-weight: inherit;
+            line-height: inherit;
+        }
+
+        .market-conclusion h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2rem, 4vw, 2.75rem);
+            font-weight: 700;
+            margin: 0 0 1rem 0;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #f8fafc 20%, #38bdf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .market-conclusion .section-lead {
+            max-width: 640px;
+            margin: 0 auto 2.75rem auto;
+            font-size: 1.1rem;
+            line-height: 1.7;
+            color: #94a3b8;
+            font-weight: 400;
+        }
+
+        .comparison-table-wrapper {
+            overflow-x: auto;
+            border-radius: 20px;
+            border: 1px solid rgba(56, 189, 248, 0.18);
+            background:
+                radial-gradient(ellipse 80% 60% at 85% 0%, rgba(56, 189, 248, 0.12), transparent 55%),
+                radial-gradient(ellipse 60% 50% at 10% 100%, rgba(129, 140, 248, 0.08), transparent 50%),
+                rgba(15, 23, 42, 0.85);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            min-width: 640px;
+        }
+
+        .comparison-table thead th {
+            padding: 1.35rem 1.5rem;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .comparison-table thead th:first-child {
+            color: #64748b;
+            width: 22%;
+        }
+
+        .comparison-table thead th.col-competitor {
+            color: #94a3b8;
+            width: 34%;
+            background: rgba(2, 6, 23, 0.35);
+        }
+
+        .comparison-table thead th.col-capsoul {
+            color: #38bdf8;
+            width: 44%;
+            background: linear-gradient(180deg, rgba(56, 189, 248, 0.14), rgba(56, 189, 248, 0.04));
+            position: relative;
+        }
+
+        .comparison-table thead th.col-capsoul::after {
+            content: 'Winner';
+            display: inline-block;
+            margin-left: 0.65rem;
+            padding: 0.2rem 0.55rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #020617;
+            background: #38bdf8;
+            border-radius: 4px;
+            vertical-align: middle;
+        }
+
+        .comparison-table tbody td {
+            padding: 1.15rem 1.5rem;
+            font-size: 0.98rem;
+            line-height: 1.45;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            vertical-align: middle;
+        }
+
+        .comparison-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .comparison-table tbody tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .comparison-table tbody tr:hover td.cell-capsoul {
+            background: rgba(56, 189, 248, 0.08);
+        }
+
+        .comparison-table .feature-label {
+            color: #e2e8f0;
+            font-weight: 600;
+            font-size: 0.92rem;
+        }
+
+        .comparison-table .cell-competitor {
+            color: #64748b;
+            background: rgba(2, 6, 23, 0.25);
+        }
+
+        .comparison-table .cell-competitor .cmp-mark {
+            color: #475569;
+        }
+
+        .comparison-table .cell-capsoul {
+            color: #e0f2fe;
+            font-weight: 500;
+            background: rgba(56, 189, 248, 0.04);
+            border-left: 1px solid rgba(56, 189, 248, 0.12);
+            border-right: 1px solid rgba(56, 189, 248, 0.12);
+        }
+
+        .comparison-table tbody tr:last-child .cell-capsoul {
+            border-bottom: 1px solid rgba(56, 189, 248, 0.12);
+            border-radius: 0 0 12px 0;
+        }
+
+        .comparison-table thead th.col-capsoul {
+            border-left: 1px solid rgba(56, 189, 248, 0.12);
+            border-right: 1px solid rgba(56, 189, 248, 0.12);
+        }
+
+        .cmp-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .cmp-mark {
+            flex-shrink: 0;
+            width: 1.35rem;
+            height: 1.35rem;
+            margin-top: 0.1rem;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .cmp-mark.yes {
+            background: rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+        }
+
+        .cmp-mark.no {
+            background: rgba(71, 85, 105, 0.35);
+            color: #64748b;
+        }
+
+        .cmp-mark.partial {
+            background: rgba(148, 163, 184, 0.15);
+            color: #94a3b8;
+        }
+
+        .conclusion-summary {
+            max-width: 720px;
+            margin: 2.5rem auto 0 auto;
+            font-size: 1.2rem;
+            font-weight: 600;
+            line-height: 1.65;
+            color: #cbd5e1;
+        }
+
+        .conclusion-summary em {
+            font-style: normal;
+            color: #38bdf8;
+        }
+
+        /* Emotional Closing Section */
+        .emotional-closing {
+            padding: 10rem 2rem;
+            background-color: #020617;
+            position: relative;
+            z-index: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .emotional-container {
+            max-width: 800px;
+            text-align: center;
+        }
+
+        .emotional-container h2 {
+            font-size: 3.5rem;
+            margin: 0 0 3rem 0;
+            background: linear-gradient(135deg, #f8fafc, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
+        }
+
+        .emotional-container p {
+            font-size: 1.25rem;
+            color: #94a3b8;
+            line-height: 1.8;
+            margin-bottom: 2rem;
+        }
+
+        .emotional-container .emotional-highlight {
+            font-size: 1.75rem;
+            color: #38bdf8;
+            font-weight: 600;
+            margin: 3rem 0;
+            font-style: italic;
+        }
+
+        .emotional-container p:last-child {
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 768px) {
+            .market-header h2 {
+                font-size: 2.5rem;
+            }
+
+            .market-intro {
+                padding: 1.5rem;
+                font-size: 1.05rem;
+            }
+
+            .market-section {
+                padding: 4rem 1rem;
+            }
+
+            .market-conclusion {
+                margin-top: 3rem;
+                padding-top: 2.5rem;
+            }
+
+            .market-conclusion .section-lead {
+                font-size: 1rem;
+                margin-bottom: 2rem;
+            }
+
+            .comparison-table thead th,
+            .comparison-table tbody td {
+                padding: 1rem 1rem;
+            }
+
+            .comparison-table thead th.col-capsoul::after {
+                display: block;
+                margin: 0.4rem 0 0 0;
+                width: fit-content;
+            }
+
+            .conclusion-summary {
+                font-size: 1.05rem;
+                margin-top: 2rem;
+            }
+
+            .emotional-closing {
+                padding: 6rem 1rem;
+            }
+
+            .emotional-container h2 {
+                font-size: 2.5rem;
+                margin-bottom: 2rem;
+            }
+
+            .emotional-container p {
+                font-size: 1.1rem;
+            }
+
+            .emotional-container .emotional-highlight {
+                font-size: 1.4rem;
+                margin: 2rem 0;
+            }
+        }
+
+        /* =============================== */
+        /* Adaptation Roadmap Section */
+        /* =============================== */
+        .adaptation-section {
+            padding: 8rem 2rem;
+            background-color: #020617;
+            position: relative;
+            z-index: 2;
+        }
+
+        .adaptation-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .adaptation-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .adaptation-header h2 {
+            font-size: 3.5rem;
+            margin: 0 0 1rem 0;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .adaptation-header p {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .roadmap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .roadmap-card {
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .roadmap-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(56, 189, 248, 0.35);
+        }
+
+        .roadmap-card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 1rem;
+        }
+
+        .roadmap-card-icon {
+            font-size: 2.2rem;
+            width: 52px;
+            height: 52px;
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .roadmap-card h3 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin: 0;
+            line-height: 1.3;
+        }
+
+        .roadmap-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+            flex: 1;
+        }
+
+        .roadmap-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            font-size: 0.95rem;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .roadmap-status {
+            flex-shrink: 0;
+            margin-top: 0.2rem;
+        }
+
+        .roadmap-status svg {
+            width: 1.2rem;
+            height: 1.2rem;
+        }
+
+        .status-check {
+            color: #34d399;
+        }
+
+        .status-progress {
+            color: #fbbf24;
+            animation: spin 2s linear infinite;
+        }
+
+        .status-planned {
+            color: #64748b;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .roadmap-note {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-left: 1.9rem;
+            /* aligns with text after icon */
+            font-style: italic;
+        }
+
+        .adaptation-media {
+            display: grid;
+            grid-template-columns: 1.35fr 1fr;
+            gap: 2rem;
+            align-items: center;
+            margin-bottom: 3.5rem;
+            padding: 1.25rem;
+            border-radius: 24px;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            background:
+                radial-gradient(ellipse 70% 80% at 0% 50%, rgba(56, 189, 248, 0.1), transparent 55%),
+                rgba(15, 23, 42, 0.7);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        }
+
+        .adaptation-media-video {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #020617;
+            aspect-ratio: 16 / 10;
+        }
+
+        .adaptation-media-video video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .adaptation-media-copy {
+            padding: 0.5rem 1rem 0.5rem 0.25rem;
+        }
+
+        .adaptation-media-label {
+            display: inline-block;
+            margin-bottom: 0.85rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #38bdf8;
+        }
+
+        .adaptation-media-copy h3 {
+            margin: 0 0 0.85rem 0;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.55rem;
+            font-weight: 700;
+            color: #f8fafc;
+            letter-spacing: -0.02em;
+            line-height: 1.25;
+        }
+
+        .adaptation-media-copy p {
+            margin: 0 0 1.25rem 0;
+            color: #94a3b8;
+            font-size: 1rem;
+            line-height: 1.65;
+        }
+
+        .adaptation-media-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.55rem;
+        }
+
+        .adaptation-media-tags span {
+            display: inline-block;
+            padding: 0.4rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            background: rgba(56, 189, 248, 0.08);
+            color: #bae6fd;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .adaptation-header h2 {
+                font-size: 2.5rem;
+            }
+
+            .roadmap-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .adaptation-media {
+                grid-template-columns: 1fr;
+                margin-bottom: 2.5rem;
+            }
+
+            .adaptation-media-copy {
+                padding: 0.25rem 0.35rem 0.75rem;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <section class="hero">
+        <video autoplay loop muted playsinline class="hero-video">
+            <source
+                src="https://res.cloudinary.com/dfz5m8dzp/video/upload/v1773511791/lv_7536130612327910717_20260308135935.mp4"
+                type="video/mp4">
+        </video>
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h1>From Lighting on the Stage.<br><span class="gradient-text">To your Light in your home.</span></h1>
+        </div>
+
+        <div class="scroll-indicator">
+            <span>Scroll</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+        </div>
+    </section>
+
+    <div class="scroll-container" id="scrollContainer">
+        <div class="sticky-wrapper">
+            <!-- Images in sequence -->
+            <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036021/pfl_lamp/1.jpg"
+                class="sequence-image" id="img-0" alt="Fully Assembled">
+            <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036022/pfl_lamp/open2.jpg"
+                class="sequence-image" id="img-1" alt="Step 1 Disassembly">
+            <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036023/pfl_lamp/open3.png"
+                class="sequence-image" id="img-2" alt="Step 2 Disassembly">
+            <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036024/pfl_lamp/open4.png"
+                class="sequence-image" id="img-3" alt="Fully Disassembled">
+
+            <!-- Progress Dots -->
+            <div class="steps-indicator">
+                <div class="step-dot active" id="dot-0"></div>
+                <div class="step-dot" id="dot-1"></div>
+                <div class="step-dot" id="dot-2"></div>
+                <div class="step-dot" id="dot-3"></div>
+            </div>
+
+            <!-- Descriptive Text -->
+            <div class="text-overlay-container">
+                <div class="step-text active" id="text-0">
+                    <h2>Step 1: Fully Assembled</h2>
+                    <p>The product in its complete form, showcasing the sleek exterior design and perfect fit of all
+                        components.</p>
+                </div>
+                <div class="step-text" id="text-1">
+                    <h2>Step 2: Outer Shell Removed</h2>
+                    <p>Removing the exterior housing reveals the first layer of internal components and the core
+                        structural frame.</p>
+                </div>
+                <div class="step-text" id="text-2">
+                    <h2>Step 3: Internal Mechanics</h2>
+                    <p>Deeper into the assembly, exposing the intricate mechanical parts and circuitry that power the
+                        device.</p>
+                </div>
+                <div class="step-text" id="text-3">
+                    <h2>Step 4: Full Breakdown</h2>
+                    <p>The core elements completely disassembled, highlighting the precision engineering of every
+                        individual piece.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="senses-section">
+        <div class="senses-container">
+            <div class="senses-info-box left-box">
+                <h3>Touch Responsive</h3>
+                <p>Its petals are sensitive to touch and will react dynamically to your interactions.</p>
+            </div>
+
+            <div class="senses-gif-container">
+                <img src="ezgif-74f3e441e1f29abf.gif" alt="Product Sensing and Reacting" class="senses-gif">
+            </div>
+
+            <div class="senses-info-box right-box">
+                <h3>Sound & Voice Reactive</h3>
+                <p>Reacts to sound, music, or voice. It instantly transforms sound into pure light bands to create
+                    stunning music visualizers or mood sequences.</p>
+            </div>
+        </div>
+    </section>
+
+    <div class="scroll-container split-scroll-container" id="splitScrollContainer">
+        <div class="sticky-wrapper split-sticky-wrapper">
+
+            <!-- Connection Line -->
+            <div class="connecting-line"></div>
+
+            <!-- Bases -->
+            <div class="base-container left-base"></div>
+            <div class="base-container right-base"></div>
+
+            <!-- Capsules -->
+            <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036025/pfl_lamp/capsoul.gif"
+                alt="Capsule Left" class="capsule left-capsule">
+            <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036025/pfl_lamp/capsoul.gif"
+                alt="Capsule Right" class="capsule right-capsule">
+
+            <!-- Growing Text -->
+            <div class="connection-text">
+                <h2>Always Connected</h2>
+                <p>No matter how far the two capsules go, they are always connected—ready to share a little light and a
+                    little presence.</p>
+            </div>
+
+        </div>
+    </div>
+
+    <section class="modularity-section">
+        <div class="modularity-header">
+            <h2>Endless Modularity</h2>
+            <p>Customize your lamp by pairing different petal sizes with interchangeable bases.</p>
+        </div>
+
+        <div class="modularity-container">
+            <!-- Assembled Preview Window (Left/Center) -->
+            <div class="modularity-preview">
+                <div class="preview-title">Assembled Preview</div>
+                <div class="preview-window">
+                    <div class="preview-glow"></div>
+                    <img id="preview-display"
+                        src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036026/pfl_lamp/LBLUE.png"
+                        alt="Assembled Lamp Preview" class="preview-img">
+                </div>
+                <div class="preview-details">
+                    <span id="preview-petal-name">Full Size Petals</span> on <span id="preview-base-name">Pot
+                        Base</span>
+                </div>
+            </div>
+
+            <!-- Configuration Controls Panel (Right/Bottom) -->
+            <div class="modularity-controls">
+                <!-- Group 1: Petal Sizes (Top Row) -->
+                <div class="control-group">
+                    <h3>1. Select Petals</h3>
+                    <div class="options-grid petals-grid">
+                        <div class="option-card active" data-type="petal" data-value="full"
+                            data-name="Full Size Petals">
+                            <div class="option-image-wrapper">
+                                <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036027/pfl_lamp/LARGE3.png"
+                                    alt="Full Size Petals" class="option-img">
+                            </div>
+                            <div class="option-info">
+                                <h4>Full Size</h4>
+                                <p>Room-filling, dramatic centerpiece</p>
+                            </div>
+                        </div>
+                        <div class="option-card" data-type="petal" data-value="medium" data-name="Medium Petals">
+                            <div class="option-image-wrapper">
+                                <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036028/pfl_lamp/med_petals.png"
+                                    alt="Medium Petals" class="option-img">
+                            </div>
+                            <div class="option-info">
+                                <h4>Medium</h4>
+                                <p>Balanced, personal space glow</p>
+                            </div>
+                        </div>
+                        <div class="option-card" data-type="petal" data-value="small" data-name="Small Palm Petals">
+                            <div class="option-image-wrapper">
+                                <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036036/pfl_lamp/DARK_BASE.png"
+                                    alt="Small Palm Petals" class="option-img">
+                            </div>
+                            <div class="option-info">
+                                <h4>Small Palm</h4>
+                                <p>Compact, portable palm size</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group 2: Interchangeable Bases (Bottom Row) -->
+                <div class="control-group">
+                    <h3>2. Select Base</h3>
+                    <div class="options-grid bases-grid">
+                        <div class="option-card active" data-type="base" data-value="pot" data-name="Pot Base">
+                            <div class="option-image-wrapper">
+                                <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036030/pfl_lamp/POTBASE.png"
+                                    alt="Pot Base" class="option-img">
+                            </div>
+                            <div class="option-info">
+                                <h4>Pot Base</h4>
+                                <p>Classic, organic planter silhouette</p>
+                            </div>
+                        </div>
+                        <div class="option-card" data-type="base" data-value="flat" data-name="Flat Base">
+                            <div class="option-image-wrapper">
+                                <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036031/pfl_lamp/FLAT_BASE.png"
+                                    alt="Flat Base" class="option-img">
+                            </div>
+                            <div class="option-info">
+                                <h4>Flat Base</h4>
+                                <p>Sleek, minimalist low-profile base</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="scroll-container led-scroll-container" id="ledScrollContainer">
+        <div class="sticky-wrapper led-sticky-wrapper">
+
+            <div class="room-svg-container">
+                <svg viewBox="0 0 800 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"
+                    xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+                    <defs>
+                        <!-- Medium lamp body glow filter -->
+                        <filter id="medBodyGlow" x="-80%" y="-80%" width="260%" height="260%">
+                            <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="blur" />
+                            <feColorMatrix in="blur" type="matrix" values="1 0.8 0 0 0.1
+                                        0.8 0.7 0 0 0.05
+                                        0   0   0.2 0 0
+                                        0   0   0   1.4 0" result="coloredBlur" />
+                            <feMerge>
+                                <feMergeNode in="coloredBlur" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+
+                        <!-- Full lamp body glow filter -->
+                        <filter id="fullBodyGlow" x="-60%" y="-60%" width="220%" height="220%">
+                            <feGaussianBlur in="SourceGraphic" stdDeviation="22" result="blur" />
+                            <feColorMatrix in="blur" type="matrix" values="0.8 0.9 1 0 0
+                                        0.6 0.8 1 0 0
+                                        0.2 0.5 1 0 0
+                                        0   0   0 1.6 0" result="coloredBlur" />
+                            <feMerge>
+                                <feMergeNode in="coloredBlur" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+
+                        <!-- Medium petal: tight personal-space radial halo -->
+                        <radialGradient id="mediumLightGrad" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#fffbeb" stop-opacity="1" />
+                            <stop offset="18%" stop-color="#fef08a" stop-opacity="0.78" />
+                            <stop offset="42%" stop-color="#fde68a" stop-opacity="0.38" />
+                            <stop offset="72%" stop-color="#fbbf24" stop-opacity="0.10" />
+                            <stop offset="100%" stop-color="#020617" stop-opacity="0" />
+                        </radialGradient>
+
+                        <!-- Full petal: wide cold-white room flood -->
+                        <radialGradient id="fullLightGrad" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#ffffff" stop-opacity="1" />
+                            <stop offset="15%" stop-color="#f0f9ff" stop-opacity="0.88" />
+                            <stop offset="40%" stop-color="#e0f2fe" stop-opacity="0.52" />
+                            <stop offset="70%" stop-color="#38bdf8" stop-opacity="0.20" />
+                            <stop offset="100%" stop-color="#020617" stop-opacity="0" />
+                        </radialGradient>
+
+                        <!-- Wall tint gradients (applied over room as light settles) -->
+                        <radialGradient id="medWallTint" cx="85%" cy="40%" r="55%">
+                            <stop offset="0%" stop-color="#fef3c7" stop-opacity="0.45" />
+                            <stop offset="100%" stop-color="#020617" stop-opacity="0" />
+                        </radialGradient>
+                        <radialGradient id="fullWallTint" cx="15%" cy="45%" r="70%">
+                            <stop offset="0%" stop-color="#e0f2fe" stop-opacity="0.55" />
+                            <stop offset="100%" stop-color="#020617" stop-opacity="0" />
+                        </radialGradient>
+                    </defs>
+
+                    <!-- === ROOM SCENE === -->
+                    <!-- Walls -->
+                    <rect x="0" y="0" width="800" height="400" fill="#1e293b" />
+                    <line x1="0" y1="400" x2="800" y2="400" stroke="#0f172a" stroke-width="4" />
+
+                    <!-- Floor -->
+                    <polygon points="0,400 800,400 800,600 0,600" fill="#0f172a" />
+
+                    <!-- Wall Cutout (Niche for Large Lamp, left side) -->
+                    <rect x="60" y="80" width="180" height="320" fill="#0f172a" />
+                    <!-- Niche inner shadow / rim -->
+                    <rect x="60" y="80" width="180" height="320" fill="transparent" stroke="#020617" stroke-width="6"
+                        opacity="0.5" />
+                    <!-- Small base/pedestal inside niche -->
+                    <rect x="80" y="380" width="140" height="20" fill="#1e293b" />
+
+                    <!-- Center Wall TV -->
+                    <rect x="280" y="100" width="220" height="120" rx="5" fill="#020617" stroke="#334155"
+                        stroke-width="4" />
+                    <!-- TV Stand / Console -->
+                    <rect x="260" y="280" width="260" height="40" rx="4" fill="#334155" />
+                    <rect x="280" y="320" width="15" height="80" fill="#1e293b" />
+                    <rect x="485" y="320" width="15" height="80" fill="#1e293b" />
+
+                    <!-- Couch (right side) -->
+                    <rect x="520" y="270" width="180" height="130" rx="15" fill="#334155" />
+                    <!-- Left Arm -->
+                    <rect x="500" y="310" width="40" height="100" rx="8" fill="#475569" />
+                    <!-- Cushions -->
+                    <rect x="540" y="340" width="160" height="70" rx="5" fill="#64748b" />
+
+                    <!-- Side Table (far right, next to couch) -->
+                    <rect x="710" y="315" width="70" height="15" rx="5" fill="#475569" />
+                    <rect x="725" y="330" width="10" height="70" fill="#334155" />
+                    <rect x="755" y="330" width="10" height="70" fill="#334155" />
+
+                    <!-- === LAMP IMAGES (behind darkness, revealed as it fades) === -->
+
+                    <!-- Medium lamp: sitting on the far right side table -->
+                    <image id="lampMedImg"
+                        href="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036032/pfl_lamp/med1.png" x="700"
+                        y="225" width="90" height="90" opacity="0" />
+
+                    <!-- Large lamp: placed on the pedestal inside the wall cutout -->
+                    <image id="lampFullImg1"
+                        href="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036033/pfl_lamp/LARGE1.png" x="85"
+                        y="200" width="130" height="180" opacity="0" />
+                    <image id="lampFullImg2"
+                        href="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036033/pfl_lamp/LARGE2.png" x="85"
+                        y="200" width="130" height="180" opacity="0" />
+                    <image id="lampFullImg3"
+                        href="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036027/pfl_lamp/LARGE3.png" x="85"
+                        y="200" width="130" height="180" opacity="0" />
+
+                    <!-- === PHASE 1: Medium personal-space halo === -->
+                    <!-- Tight halo centered on medium lamp body -->
+                    <circle id="medBodyHalo" cx="745" cy="270" r="180" fill="url(#mediumLightGrad)" opacity="0" />
+
+                    <!-- Wall tint for medium lamp -->
+                    <rect id="medWallTintRect" x="0" y="0" width="800" height="600" fill="url(#medWallTint)"
+                        opacity="0" />
+
+                    <!-- === PHASE 2: Full lamp room flood === -->
+                    <!-- Wide light flood from left -->
+                    <circle id="roomLightFull" cx="150" cy="290" r="750" fill="url(#fullLightGrad)" opacity="0" />
+
+                    <!-- Wall tint for full lamp -->
+                    <rect id="fullWallTintRect" x="0" y="0" width="800" height="600" fill="url(#fullWallTint)"
+                        opacity="0" />
+
+                    <!-- === DARKNESS OVERLAY (fades out last so lamps are revealed gently) === -->
+                    <rect id="roomDarkness" x="0" y="0" width="800" height="600" fill="#020617" opacity="0.98" />
+
+                    <!-- === LAMP GLOW LAYERS (on top of darkness, visible through it via opacity) === -->
+                    <!-- Medium lamp with personal body-glow filter -->
+                    <image id="lampMedGlow"
+                        href="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036034/pfl_lamp/med2.png" x="700"
+                        y="225" width="90" height="90" opacity="0" filter="url(#medBodyGlow)" />
+
+                    <!-- Full lamp with wide body-glow filter -->
+                    <image id="lampFullGlow"
+                        href="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036027/pfl_lamp/LARGE3.png" x="85"
+                        y="200" width="130" height="180" opacity="0" filter="url(#fullBodyGlow)" />
+
+                </svg>
+            </div>
+
+            <!-- Phase 1 overlay: Medium petals, bottom-right near bookshelf -->
+            <div class="led-scroll-text" id="ledMediumText">
+                <div class="bloom-card medium" style="pointer-events:auto;">
+                    <p class="bloom-eyebrow">🌸 Medium Bloom Petals</p>
+                    <h2>The Personal Sanctuary</h2>
+                    <p class="bloom-tagline">For your desk, reading nook, or nightstand.</p>
+                    <span class="bloom-led-badge">12V LEDS · Focused Output</span>
+                    <ul class="bloom-features" style="margin-top:1rem;">
+                        <li>Perfectly sized for personal space — focused light without overwhelming the room</li>
+                        <li>12V LEDS — runs cool, quiet, and steady</li>
+                        <li>Built for focus and calm — deep work, late-night reading, or a quiet check-in</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Phase 2 overlay: Full petals, bottom-left -->
+            <div class="led-scroll-text" id="ledFullText">
+                <div class="bloom-card full" style="pointer-events:auto;">
+                    <p class="bloom-eyebrow">🌺 Full Size Bloom Petals</p>
+                    <h2>The Space-Transforming Centerpiece</h2>
+                    <p class="bloom-tagline">100 RGBW LEDs, 12V. Built to fill a room.</p>
+                    <span class="bloom-led-badge">100 LEDs · 12V · Individually Addressable</span>
+                    <ul class="bloom-features" style="margin-top:1rem;">
+                        <li>Bright enough to light up a small room — </li>
+                        <li>Individually addressable pixels — smoother gradients, richer ripples</li>
+                        <li>Fluid animations to suit your mood or energy</li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <section class="tech-section">
+        <div class="tech-container">
+            <div class="tech-header">
+                <h2>LAMP that listens</h2>
+                <p>Never static, unless you want it.</p>
+            </div>
+
+            <div class="petal-mode-container">
+                <div class="mode-buttons">
+                    <button id="btn-full" class="mode-btn active" onclick="setMode('full')">Full Paired Mode</button>
+                    <button id="btn-close" class="mode-btn" onclick="setMode('close')">Close Paired Mode</button>
+                    <button id="btn-lamp" class="mode-btn" onclick="setMode('lamp')">Lamp Mode</button>
+                </div>
+
+                <div class="mode-visual">
+                    <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036036/pfl_lamp/DARK_BASE.png"
+                        alt="Dark Base" id="modeBaseImg" class="mode-base-img glow-full" />
+                </div>
+
+                <div class="mode-description">
+                    <div id="desc-full" class="mode-desc-box active">
+                        <h4>Full Paired Mode</h4>
+                        <p>All touches, sounds, and moods from paired CapSoul will be transmitted over and LEDs will
+                            light accordingly.</p>
+                    </div>
+                    <div id="desc-close" class="mode-desc-box">
+                        <h4>Close Paired Mode</h4>
+                        <p>Only touch, movement, when a person is detected close and actively interacting to the lamp
+                            will be received. </p>
+                    </div>
+                    <div id="desc-lamp" class="mode-desc-box">
+                        <h4>Lamp Mode</h4>
+                        <p>Choose your brightness and colour. Solid lamp uninterrupted. Full white with the White
+                            channel gives you bright warm glow unlike the harsh and powerhungry RGB leds. </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Two-column interactive layout -->
+            <div class="tech-interactive-layout">
+
+                <!-- Left: Sticky Card Column -->
+                <div class="tech-cards-column">
+                    <div class="part-card" id="card-petals" onclick="showMfgSection('petals')">
+                        <div class="part-icon">🌸</div>
+                        <div class="part-card-text">
+                            <h4>Silicone Mold Petals</h4>
+                            <div class="part-content">
+                                <p>FDM vs LSR manufacturing report</p>
+                            </div>
+                        </div>
+                        <span class="part-card-arrow">›</span>
+                    </div>
+                    <div class="part-card" id="card-led" onclick="showMfgSection('led')">
+                        <div class="part-icon">
+                            <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036037/pfl_lamp/customLED.png"
+                                alt="Custom LED">
+                        </div>
+                        <div class="part-card-text">
+                            <h4>Hot-Swap LED Strips</h4>
+                            <div class="part-content">
+                                <p>BTG Lighting 4PIN JST quotes</p>
+                            </div>
+                        </div>
+                        <span class="part-card-arrow">›</span>
+                    </div>
+                    <div class="part-card" id="card-base" onclick="showMfgSection('base')">
+                        <div class="part-icon">🏗️</div>
+                        <div class="part-card-text">
+                            <h4>Custom Plastics</h4>
+                            <div class="part-content">
+                                <p>Base FDM fleet capacity &amp; economics</p>
+                            </div>
+                        </div>
+                        <span class="part-card-arrow">›</span>
+                    </div>
+                    <div class="part-card" id="card-pcb" onclick="showMfgSection('pcb')">
+                        <div class="part-icon">⚡</div>
+                        <div class="part-card-text">
+                            <h4>Custom PCB</h4>
+                            <div class="part-content">
+                                <p>Capsule Core vs PCB Base specs</p>
+                            </div>
+                        </div>
+                        <span class="part-card-arrow">›</span>
+                    </div>
+                    <div class="part-card" id="card-app" onclick="showMfgSection('app')">
+                        <div class="part-icon">📱</div>
+                        <div class="part-card-text">
+                            <h4>WiFi Controller App</h4>
+                            <div class="part-content">
+                                <p>CapSoul Control live app UI &amp; spectrum</p>
+                            </div>
+                        </div>
+                        <span class="part-card-arrow">›</span>
+                    </div>
+                </div>
+
+                <!-- Right: Detail Panel -->
+                <div class="tech-panel-column" id="techPanelColumn">
+                    <div class="mfg-panel-placeholder" id="mfgPlaceholder">
+                        <div class="placeholder-icon">👆</div>
+                        <p>Select a component card to view its manufacturing details.</p>
+                    </div>
+
+                    <!-- Manufacturing Section -->
+                    <div class="manufacturing-info-container">
+                        <!-- Base Section (New Dashboard) -->
+                        <div id="mfg-base" class="manufacturing-section mfg-detail">
+                            <div class="mfg-header">
+                                <h3>FDM vs. Injection Molding: Base Manufacturing</h3>
+                            </div>
+                            <div class="tech-intro" style="margin-bottom: 2rem;">
+                                <p>FDM's lower upfront cost outweighs its higher per-unit cost below 3,000 units. Past
+                                    3,000 units, the injection mold's fixed $5,000 NRE is diluted enough that its lower
+                                    per-unit cost takes over.</p>
+                            </div>
+
+                            <!-- Crossover Chart -->
+                            <div
+                                style="background: rgba(15,23,42,0.8); border-radius: 20px; padding: 2rem 2rem 1rem; margin-bottom: 3rem; border: 1px solid rgba(255,255,255,0.08);">
+                                <svg viewBox="0 0 700 340" width="100%" style="overflow: visible;"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <linearGradient id="fdmBaseGrad" x1="0" y1="0" x2="1" y2="0">
+                                            <stop offset="0%" stop-color="#38bdf8" />
+                                            <stop offset="100%" stop-color="#818cf8" />
+                                        </linearGradient>
+                                        <linearGradient id="moldGrad" x1="0" y1="0" x2="1" y2="0">
+                                            <stop offset="0%" stop-color="#ff8c42" />
+                                            <stop offset="100%" stop-color="#f472b6" />
+                                        </linearGradient>
+                                        <filter id="chartGlowBase">
+                                            <feGaussianBlur stdDeviation="4" result="blur" />
+                                            <feMerge>
+                                                <feMergeNode in="blur" />
+                                                <feMergeNode in="SourceGraphic" />
+                                            </feMerge>
+                                        </filter>
+                                    </defs>
+                                    <!-- Grid lines -->
+                                    <line x1="80" y1="20" x2="80" y2="280" stroke="rgba(255,255,255,0.1)"
+                                        stroke-width="1" />
+                                    <line x1="80" y1="280" x2="660" y2="280" stroke="rgba(255,255,255,0.1)"
+                                        stroke-width="1" />
+                                    <line x1="80" y1="20" x2="660" y2="20" stroke="rgba(255,255,255,0.05)"
+                                        stroke-width="1" stroke-dasharray="4,4" />
+                                    <line x1="80" y1="107" x2="660" y2="107" stroke="rgba(255,255,255,0.05)"
+                                        stroke-width="1" stroke-dasharray="4,4" />
+                                    <line x1="80" y1="193" x2="660" y2="193" stroke="rgba(255,255,255,0.05)"
+                                        stroke-width="1" stroke-dasharray="4,4" />
+                                    <!-- Y-axis labels -->
+                                    <text x="70" y="24" fill="#94a3b8" font-size="11" text-anchor="end">$30k</text>
+                                    <text x="70" y="111" fill="#94a3b8" font-size="11" text-anchor="end">$20k</text>
+                                    <text x="70" y="197" fill="#94a3b8" font-size="11" text-anchor="end">$10k</text>
+                                    <text x="70" y="284" fill="#94a3b8" font-size="11" text-anchor="end">$0</text>
+                                    <!-- X-axis labels -->
+                                    <text x="80" y="300" fill="#94a3b8" font-size="12" text-anchor="middle">1,000</text>
+                                    <text x="370" y="300" fill="#94a3b8" font-size="12"
+                                        text-anchor="middle">5,000</text>
+                                    <text x="660" y="300" fill="#94a3b8" font-size="12"
+                                        text-anchor="middle">10,000</text>
+                                    <text x="370" y="320" fill="#64748b" font-size="11" text-anchor="middle">Units
+                                        Produced</text>
+                                    <!-- FDM line: 1k=$4500, 5k=$14500, 10k=$27000 -->
+                                    <polyline points="80,241 370,154 660,46" fill="none" stroke="url(#fdmBaseGrad)"
+                                        stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                                        filter="url(#chartGlowBase)"
+                                        style="stroke-dasharray: 800; stroke-dashoffset: 800; animation: drawLine 1.5s ease forwards 0.3s;" />
+                                    <!-- Molding line: 1k=$6500, 5k=$12500, 10k=$20000 -->
+                                    <polyline points="80,224 370,172 660,107" fill="none" stroke="url(#moldGrad)"
+                                        stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                                        filter="url(#chartGlowBase)"
+                                        style="stroke-dasharray: 600; stroke-dashoffset: 600; animation: drawLine 1.5s ease forwards 0.6s;" />
+                                    <!-- Data points FDM -->
+                                    <circle cx="80" cy="241" r="6" fill="#38bdf8" />
+                                    <circle cx="370" cy="154" r="6" fill="#60a5fa" />
+                                    <circle cx="660" cy="46" r="6" fill="#818cf8" />
+                                    <!-- Data points Molding -->
+                                    <circle cx="80" cy="224" r="6" fill="#ff8c42" />
+                                    <circle cx="370" cy="172" r="6" fill="#fb7185" />
+                                    <circle cx="660" cy="107" r="6" fill="#f472b6" />
+                                    <!-- Crossover marker -->
+                                    <line x1="225" y1="198" x2="225" y2="280" stroke="rgba(250,204,21,0.6)"
+                                        stroke-width="1" stroke-dasharray="4,3" />
+                                    <text x="225" y="275" fill="#fbbf24" font-size="10"
+                                        text-anchor="middle">Crossover</text>
+                                    <text x="225" y="263" fill="#fbbf24" font-size="10" text-anchor="middle">3,000
+                                        units</text>
+                                    <!-- Value labels -->
+                                    <text x="80" y="255" fill="#f8fafc" font-size="10" text-anchor="middle">$4.5k</text>
+                                    <text x="370" y="142" fill="#f8fafc" font-size="10"
+                                        text-anchor="middle">$14.5k</text>
+                                    <text x="660" y="34" fill="#f8fafc" font-size="10" text-anchor="middle">$27k</text>
+
+                                    <text x="80" y="212" fill="#f8fafc" font-size="10" text-anchor="middle">$6.5k</text>
+                                    <text x="370" y="186" fill="#f8fafc" font-size="10"
+                                        text-anchor="middle">$12.5k</text>
+                                    <text x="660" y="121" fill="#f8fafc" font-size="10" text-anchor="middle">$20k</text>
+                                    <!-- Line labels -->
+                                    <text x="590" y="35" fill="#818cf8" font-size="12" font-weight="bold">FDM
+                                        (PETG)</text>
+                                    <text x="590" y="96" fill="#f472b6" font-size="12" font-weight="bold">Molding</text>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Petals Section (LSR Report) -->
+                        <div id="mfg-petals" class="manufacturing-section mfg-detail">
+                            <div class="mfg-header">
+                                <h3>FDM vs. LSR: Petal Manufacturing Crossover</h3>
+                            </div>
+                            <div class="tech-intro" style="margin-bottom: 2rem;">
+                                <p>At small volumes, in-house FDM has the edge — no tooling cost. But the moment you
+                                    scale past ~2,000 units, LSR becomes dramatically cheaper. The chart below makes
+                                    this crystal clear.</p>
+                            </div>
+
+                            <!-- Crossover Chart -->
+                            <div
+                                style="background: rgba(15,23,42,0.8); border-radius: 20px; padding: 2rem 2rem 1rem; margin-bottom: 3rem; border: 1px solid rgba(255,255,255,0.08);">
+                                <svg viewBox="0 0 700 340" width="100%" style="overflow: visible;"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <linearGradient id="fdmGrad" x1="0" y1="0" x2="1" y2="0">
+                                            <stop offset="0%" stop-color="#f472b6" />
+                                            <stop offset="100%" stop-color="#a855f7" />
+                                        </linearGradient>
+                                        <linearGradient id="lsrGrad" x1="0" y1="0" x2="1" y2="0">
+                                            <stop offset="0%" stop-color="#38bdf8" />
+                                            <stop offset="100%" stop-color="#34d399" />
+                                        </linearGradient>
+                                        <filter id="chartGlow">
+                                            <feGaussianBlur stdDeviation="4" result="blur" />
+                                            <feMerge>
+                                                <feMergeNode in="blur" />
+                                                <feMergeNode in="SourceGraphic" />
+                                            </feMerge>
+                                        </filter>
+                                    </defs>
+                                    <!-- Grid lines -->
+                                    <line x1="80" y1="20" x2="80" y2="280" stroke="rgba(255,255,255,0.1)"
+                                        stroke-width="1" />
+                                    <line x1="80" y1="280" x2="660" y2="280" stroke="rgba(255,255,255,0.1)"
+                                        stroke-width="1" />
+                                    <line x1="80" y1="20" x2="660" y2="20" stroke="rgba(255,255,255,0.05)"
+                                        stroke-width="1" stroke-dasharray="4,4" />
+                                    <line x1="80" y1="93" x2="660" y2="93" stroke="rgba(255,255,255,0.05)"
+                                        stroke-width="1" stroke-dasharray="4,4" />
+                                    <line x1="80" y1="166" x2="660" y2="166" stroke="rgba(255,255,255,0.05)"
+                                        stroke-width="1" stroke-dasharray="4,4" />
+                                    <!-- Y-axis labels -->
+                                    <text x="70" y="24" fill="#94a3b8" font-size="11" text-anchor="end">$25k</text>
+                                    <text x="70" y="97" fill="#94a3b8" font-size="11" text-anchor="end">$17k</text>
+                                    <text x="70" y="170" fill="#94a3b8" font-size="11" text-anchor="end">$9k</text>
+                                    <text x="70" y="284" fill="#94a3b8" font-size="11" text-anchor="end">$0</text>
+                                    <!-- X-axis labels -->
+                                    <text x="80" y="300" fill="#94a3b8" font-size="12" text-anchor="middle">1,000</text>
+                                    <text x="370" y="300" fill="#94a3b8" font-size="12"
+                                        text-anchor="middle">5,000</text>
+                                    <text x="660" y="300" fill="#94a3b8" font-size="12"
+                                        text-anchor="middle">10,000</text>
+                                    <text x="370" y="320" fill="#64748b" font-size="11" text-anchor="middle">Units
+                                        Produced</text>
+                                    <!-- FDM line: 1k=$2651, 5k=$11655, 10k=$23310 mapped to 280-(cost/25000*260) -->
+                                    <polyline points="80,252 370,159 660,38" fill="none" stroke="url(#fdmGrad)"
+                                        stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                                        filter="url(#chartGlow)"
+                                        style="stroke-dasharray: 800; stroke-dashoffset: 800; animation: drawLine 1.5s ease forwards 0.3s;" />
+                                    <!-- LSR line: 1k=$4830, 5k=$7250, 10k=$10000 mapped: 4830→229, 7250→205, 10000→176 -->
+                                    <polyline points="80,229 370,205 660,176" fill="none" stroke="url(#lsrGrad)"
+                                        stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                                        filter="url(#chartGlow)"
+                                        style="stroke-dasharray: 600; stroke-dashoffset: 600; animation: drawLine 1.5s ease forwards 0.6s;" />
+                                    <!-- Data points FDM -->
+                                    <circle cx="80" cy="252" r="6" fill="#f472b6" />
+                                    <circle cx="370" cy="159" r="6" fill="#a855f7" />
+                                    <circle cx="660" cy="38" r="6" fill="#a855f7" />
+                                    <!-- Data points LSR -->
+                                    <circle cx="80" cy="229" r="6" fill="#38bdf8" />
+                                    <circle cx="370" cy="205" r="6" fill="#38bdf8" />
+                                    <circle cx="660" cy="176" r="6" fill="#34d399" />
+                                    <!-- Crossover marker -->
+                                    <line x1="220" y1="240" x2="220" y2="280" stroke="rgba(250,204,21,0.6)"
+                                        stroke-width="1" stroke-dasharray="4,3" />
+                                    <text x="220" y="275" fill="#fbbf24" font-size="10"
+                                        text-anchor="middle">Crossover</text>
+                                    <text x="220" y="263" fill="#fbbf24" font-size="10" text-anchor="middle">~2,000
+                                        units</text>
+                                    <!-- Value labels -->
+                                    <text x="80" y="246" fill="#f8fafc" font-size="10" text-anchor="middle">$2.7k</text>
+                                    <text x="370" y="153" fill="#f8fafc" font-size="10"
+                                        text-anchor="middle">$11.7k</text>
+                                    <text x="660" y="32" fill="#f8fafc" font-size="10"
+                                        text-anchor="middle">$23.3k</text>
+                                    <text x="80" y="223" fill="#f8fafc" font-size="10" text-anchor="middle">$4.8k</text>
+                                    <text x="370" y="199" fill="#f8fafc" font-size="10"
+                                        text-anchor="middle">$7.3k</text>
+                                    <text x="660" y="170" fill="#f8fafc" font-size="10" text-anchor="middle">$10k</text>
+                                    <!-- Line labels -->
+                                    <text x="672" y="35" fill="#c084fc" font-size="12" font-weight="bold">FDM</text>
+                                    <text x="672" y="173" fill="#34d399" font-size="12" font-weight="bold">LSR</text>
+                                    <style>
+                                        @keyframes drawLine {
+                                            to {
+                                                stroke-dashoffset: 0;
+                                            }
+                                        }
+                                    </style>
+                                </svg>
+                                <!-- Legend -->
+                                <div
+                                    style="display:flex; gap:2rem; justify-content:center; margin-top:0.5rem; flex-wrap:wrap;">
+                                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                                        <div
+                                            style="width:28px; height:3px; background:linear-gradient(to right,#f472b6,#a855f7); border-radius:2px;">
+                                        </div>
+                                        <span style="color:#cbd5e1; font-size:0.9rem;">FDM Total Cost</span>
+                                    </div>
+                                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                                        <div
+                                            style="width:28px; height:3px; background:linear-gradient(to right,#38bdf8,#34d399); border-radius:2px;">
+                                        </div>
+                                        <span style="color:#cbd5e1; font-size:0.9rem;">LSR Total Cost (incl. $2,500
+                                            tooling)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Full Comparison Table -->
+                            <div class="mfg-header" style="margin-top:1rem;">
+                                <h3>Detailed Cost Breakdown</h3>
+                            </div>
+                            <div class="mfg-table-container">
+                                <table class="mfg-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Metric</th>
+                                            <th>1,000 Units</th>
+                                            <th>5,000 Units</th>
+                                            <th>10,000 Units</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr style="background:rgba(244,114,182,0.05);">
+                                            <td colspan="4"
+                                                style="color:#f472b6; font-weight:700; font-size:0.95rem; padding-top:1.5rem;">
+                                                FDM (In-House TPU)</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Material ($0.95/unit)</td>
+                                            <td>$951</td>
+                                            <td>$4,753</td>
+                                            <td>$9,507</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Labor ($0.50/unit)</td>
+                                            <td>$500</td>
+                                            <td>$2,500</td>
+                                            <td>$5,000</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Printers Needed</td>
+                                            <td>3</td>
+                                            <td>11</td>
+                                            <td>22</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Capital ($400/printer)</td>
+                                            <td>$1,200</td>
+                                            <td>$4,400</td>
+                                            <td>$8,800</td>
+                                        </tr>
+                                        <tr style="background:rgba(244,114,182,0.1);">
+                                            <td><strong>FDM Total</strong></td>
+                                            <td><strong>~$2,651</strong></td>
+                                            <td><strong>~$11,655</strong></td>
+                                            <td><strong>~$23,310</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td>FDM Cost / Unit (blended)</td>
+                                            <td>$2.65</td>
+                                            <td>$2.33</td>
+                                            <td>$2.33</td>
+                                        </tr>
+                                        <tr style="background:rgba(56,189,248,0.05);">
+                                            <td colspan="4"
+                                                style="color:#38bdf8; font-weight:700; font-size:0.95rem; padding-top:1.5rem;">
+                                                LSR (Shenzhen Molding)</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Unit Price</td>
+                                            <td>~$2.33*</td>
+                                            <td>$0.95</td>
+                                            <td>$0.75</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Tooling (one-time, $2,500)</td>
+                                            <td>$2,500</td>
+                                            <td>$2,500</td>
+                                            <td>$2,500</td>
+                                        </tr>
+                                        <tr style="background:rgba(56,189,248,0.1);">
+                                            <td><strong>LSR Total</strong></td>
+                                            <td><strong>~$4,830*</strong></td>
+                                            <td><strong>$7,250</strong></td>
+                                            <td><strong>$10,000</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td>LSR Cost / Unit (blended)</td>
+                                            <td>$4.83</td>
+                                            <td>$1.45</td>
+                                            <td>$1.00</td>
+                                        </tr>
+                                        <tr style="background:rgba(250,204,21,0.07);">
+                                            <td colspan="4"
+                                                style="color:#fbbf24; font-weight:700; font-size:0.95rem; padding-top:1.5rem;">
+                                                Verdict</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Cheaper Method</strong></td>
+                                            <td style="color:#f472b6; font-weight:700;">FDM<br><span
+                                                    style="font-size:0.85em; font-weight:400; color:#94a3b8;">by
+                                                    ~$2,180</span></td>
+                                            <td style="color:#38bdf8; font-weight:700;">LSR<br><span
+                                                    style="font-size:0.85em; font-weight:400; color:#94a3b8;">by
+                                                    ~$4,405</span></td>
+                                            <td style="color:#34d399; font-weight:700;">LSR<br><span
+                                                    style="font-size:0.85em; font-weight:400; color:#94a3b8;">by
+                                                    ~$13,310</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p style="color:#64748b; font-size:0.85rem; margin-top:1rem; text-align:center;">* At 1,000
+                                units, LSR pricing is estimated — actual quote may vary. Crossover point is
+                                approximately 2,000 units.</p>
+                        </div>
+
+                        <!-- LED Strips Section -->
+                        <div id="mfg-led" class="manufacturing-section mfg-detail">
+                            <div class="mfg-header">
+                                <h3>BTG Lighting LED 4PIN JST LED Strips</h3>
+                            </div>
+                            <div class="tech-intro" style="margin-bottom: 2rem;">
+                                <p>Custom-manufactured LED strips for flawless integration into the hot-swappable
+                                    petals. Sourced directly from BTG Lighting for optimal cost-efficiency at scale.</p>
+                            </div>
+
+                            <div class="mfg-table-container">
+                                <table class="mfg-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Production Run</th>
+                                            <th>Total Quoted Cost</th>
+                                            <th>Unit Cost (Per Strip)</th>
+                                            <th>Yield (Lamp Bases)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>5,000 Strips</td>
+                                            <td>$2,500 <em style="color: #94a3b8; font-size: 0.9em;">(Calculated based
+                                                    on unit price)</em></td>
+                                            <td>$0.50</td>
+                                            <td>1,000 Lamp Bases</td>
+                                        </tr>
+                                        <tr>
+                                            <td>10,000 Strips</td>
+                                            <td>$1,000</td>
+                                            <td>$0.10</td>
+                                            <td>2,000 Lamp Bases</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Custom PCB Section -->
+                        <div id="mfg-pcb" class="manufacturing-section mfg-detail">
+                            <div class="mfg-header">
+                                <h3>Internal Electronics & Custom PCB</h3>
+                            </div>
+                            <div class="tech-intro" style="margin-bottom: 2rem;">
+                                <p>Our internal electronics draw heavily from advanced battery-powered flowarts
+                                    circuitry. Moving from
+                                    an active dance prop to a home-based lamp environment allowed us to simplify extreme
+                                    weight
+                                    constraints, focusing purely on perfecting the ambient lighting experience and
+                                    utilizing durable,
+                                    bulk-ordered custom components.</p>
+                            </div>
+
+                            <div class="pcb-split">
+                                <div class="pcb-col">
+                                    <h3>Capsule Core</h3>
+                                    <ul>
+                                        <li>Touch sensitive top</li>
+                                        <li>Click button embedded mic</li>
+                                        <li>IMU for vibration and motion sensing</li>
+                                        <li>850 mAh battery for 3 hours of pure white light</li>
+                                        <li>16 LEDs</li>
+                                    </ul>
+                                </div>
+                                <div class="pcb-center">
+                                    <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036038/pfl_lamp/PCBPAIR.png"
+                                        alt="PCB Pair" class="pcb-image">
+                                </div>
+                                <div class="pcb-col">
+                                    <h3>PCB Base</h3>
+                                    <ul>
+                                        <li>5 connections for 5 LED petals</li>
+                                        <li>12V power efficient, rated for bright lights and low heat</li>
+                                        <li>Max rating is 200 LEDs (comfortable safe zone for planned 100 LEDs)</li>
+                                        <li>Hot swappable petals for customization and replacement</li>
+                                        <li>12V power supply through USB-C</li>
+                                        <li>5 point touch sensor for individually touch capable petals</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- WiFi Controller App Section -->
+                        <div id="mfg-app" class="manufacturing-section mfg-detail">
+                            <div class="mfg-header">
+                                <h3>Connected WiFi Controller App (CapSoul Control)</h3>
+                            </div>
+                            <div class="tech-intro" style="margin-bottom: 2rem;">
+                                <p>Full control over Wi-Fi &amp; ESP-NOW mesh networking. Adjust lighting modes,
+                                    real-time audio FFT sensitivity, preset moods, and individual petal responsiveness
+                                    directly from your smartphone.</p>
+                            </div>
+
+                            <div class="pcb-split" style="align-items: center;">
+                                <div class="pcb-col">
+                                    <h3>App Features &amp; Capabilities</h3>
+                                    <ul>
+                                        <li><strong>Real-Time Petal Visualizer:</strong> Live 5-petal interactive UI
+                                            mirroring current lamp state and brightness</li>
+                                        <li><strong>Audio &amp; Mic Spectrum:</strong> Built-in microphone frequency
+                                            response monitoring with live FFT signal metering</li>
+                                        <li><strong>3 Operating Modes:</strong> Mood Mode, Lamp Mode (solid ambient
+                                            light), and Sensing Mode</li>
+                                        <li><strong>Preset Mood Palettes:</strong> Fire, Aurora, Strawberry, Ocean,
+                                            Sunset, Forest, and Custom user palettes</li>
+                                        <li><strong>Animation Speed &amp; Timers:</strong> Granular speed slider control
+                                            &amp; customizable schedule timers</li>
+                                    </ul>
+                                </div>
+                                <div class="pcb-center">
+                                    <div class="tech-app-phone" style="max-width: 250px;">
+                                        <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036039/pfl_lamp/app.png"
+                                            alt="CapSoul Control WiFi Controller App Screenshot" class="tech-app-img">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div> <!-- End manufacturing-info-container -->
+
+                </div> <!-- End tech-panel-column -->
+            </div> <!-- End tech-interactive-layout -->
+
+            <!-- Connected WiFi Controller App Section (At the Bottom of Technology) -->
+            <div class="tech-app-section">
+                <div class="tech-app-header">
+                    <span class="tech-app-badge">Software &amp; Connectivity</span>
+                    <h3>CapSoul Control WiFi Controller App</h3>
+                    <p>Engineered for instant local response over Wi-Fi &amp; ESP-NOW mesh. Control light moods, audio
+                        reactive FFT spectrums, touch sensitivity, and timer behaviors directly from your mobile device.
+                    </p>
+                </div>
+
+                <div class="tech-app-grid">
+                    <div class="tech-app-mockup-wrapper">
+                        <div class="tech-app-phone">
+                            <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036039/pfl_lamp/app.png"
+                                alt="CapSoul Control WiFi Controller App" class="tech-app-img">
+                        </div>
+                    </div>
+
+                    <div class="tech-app-features">
+                        <div class="tech-app-feature-card">
+                            <div class="tech-app-feature-icon">📱</div>
+                            <div class="tech-app-feature-content">
+                                <h4>Live Interactive State Sync</h4>
+                                <p>Real-time 5-petal SVG interface mirrors individual petal color, pulse intensity, and
+                                    touch response on screen.</p>
+                            </div>
+                        </div>
+
+                        <div class="tech-app-feature-card">
+                            <div class="tech-app-feature-icon">🎵</div>
+                            <div class="tech-app-feature-content">
+                                <h4>Audio Spectrum Sensing</h4>
+                                <p>Built-in microphone FFT analysis with live signal frequency spectrum visualization
+                                    for sound-reactive lighting.</p>
+                            </div>
+                        </div>
+
+                        <div class="tech-app-feature-card">
+                            <div class="tech-app-feature-icon">🎨</div>
+                            <div class="tech-app-feature-content">
+                                <h4>Mood &amp; Lighting Presets</h4>
+                                <p>Instant switching between curated moods (Fire, Aurora, Strawberry, Ocean, Sunset,
+                                    Forest, Custom) with 0-100% animation speed control.</p>
+                            </div>
+                        </div>
+
+                        <div class="tech-app-feature-card">
+                            <div class="tech-app-feature-icon">⏱️</div>
+                            <div class="tech-app-feature-content">
+                                <h4>Smart Behaviors &amp; Timers</h4>
+                                <p>Configure automated sleep/wake schedules, touch sensitivity thresholds, and close
+                                    proximity pairing preferences.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- =============================== -->
+    <!-- Adaptation Roadmap Section -->
+    <!-- =============================== -->
+    <section class="adaptation-section">
+        <div class="adaptation-container">
+            <div class="adaptation-header">
+                <h2>Adaptation Roadmap</h2>
+                <p>From festival prop to home lamp — what's already proven and what's being tuned for the living room.
+                </p>
+            </div>
+
+            <div class="adaptation-media">
+                <div class="adaptation-media-video">
+                    <video src="https://res.cloudinary.com/dfz5m8dzp/video/upload/v1784948379/PETALLED_nyxqws.mp4"
+                        autoplay loop muted playsinline></video>
+                </div>
+                <div class="adaptation-media-copy">
+                    <span class="adaptation-media-label">Petal Design · In Progress</span>
+                    <h3>Individual LED channels, back in the original petals</h3>
+                    <p>Edge-to-edge strip lighting restored in the petal channel — custom-ordered from the factory so we
+                        can fully test brightness, fit, and hot-swap behaviour before production.</p>
+                    <div class="adaptation-media-tags">
+                        <span>Individual LED channel</span>
+                        <span>Original petal geometry</span>
+                        <span>Factory custom order</span>
+                        <span>Full testing sample</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="roadmap-grid">
+                <!-- Technology Card -->
+                <div class="roadmap-card">
+                    <div class="roadmap-card-header">
+                        <div class="roadmap-card-icon">⚙️</div>
+                        <h3>Technology</h3>
+                    </div>
+                    <ul class="roadmap-list">
+                        <li>
+                            <span class="roadmap-status status-check">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </span>
+                            <span>Revised flowcapsule board with integrated touch sensing pad</span>
+                        </li>
+                        <li>
+                            <span class="roadmap-status status-check">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </span>
+                            <span>Built‑in microphone &amp; motion sensor <em>(already present)</em></span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Petal Design Card -->
+                <div class="roadmap-card">
+                    <div class="roadmap-card-header">
+                        <div class="roadmap-card-icon">🌸</div>
+                        <h3>Petal Design</h3>
+                    </div>
+                    <ul class="roadmap-list">
+                        <li>
+                            <span class="roadmap-status status-check">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </span>
+                            <span>Individual LED channel restored in original petals for edge‑to‑edge lighting</span>
+                        </li>
+                        <li>
+                            <span class="roadmap-status status-check">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </span>
+                            <span>Custom‑ordered petal from factory for full testing</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Firmware Card -->
+                <div class="roadmap-card">
+                    <div class="roadmap-card-header">
+                        <div class="roadmap-card-icon">🧠</div>
+                        <h3>Firmware</h3>
+                    </div>
+                    <ul class="roadmap-list">
+                        <li>
+                            <span class="roadmap-status status-progress">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="8">
+                                    </circle>
+                                    <path d="M12 6v6l4 2"></path>
+                                </svg>
+                            </span>
+                            <span>Adapt LED effects from single central strip to 5‑petal flower</span>
+                        </li>
+                        <li class="roadmap-note">lightweight rewrite, not a heavy lift</li>
+                        <li>
+                            <span class="roadmap-status status-planned">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                </svg>
+                            </span>
+                            <span>Calibrate per‑petal touch sensitivity</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- App Card -->
+                <div class="roadmap-card">
+                    <div class="roadmap-card-header">
+                        <div class="roadmap-card-icon">📱</div>
+                        <h3>App</h3>
+                    </div>
+                    <ul class="roadmap-list">
+                        <li>
+                            <span class="roadmap-status status-planned">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                </svg>
+                            </span>
+                            <span>Adapt UI for 5‑petal flower visualization</span>
+                        </li>
+                        <li>
+                            <span class="roadmap-status status-planned">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                </svg>
+                            </span>
+                            <span>Implement pairing behaviour for multiple bases</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="gallery-section">
+        <div class="gallery-container">
+            <div class="gallery-header">
+                <h2>The Origin Story</h2>
+            </div>
+            <div class="gallery-content-wrapper">
+                <div class="origin-story">
+                    <p>Two years of play, experimentation, and a whole lot of flow later — the Petal Staff has been an
+                        absolute blast to explore. Some concessions had to be made to survive the road: performance
+                        hardware takes a beating.</p>
+
+                    <p>But as the palm petals kept getting left behind on stages, illuminating random corners of a
+                        festival space long after the show ended, I started to realize what a nifty little lamp this
+                        thing could become.</p>
+
+                    <p class="story-beat">Then it clicked — I already had a lamp in my hands. The same petals that lit
+                        the
+                        stage could sit still, bloom in a room, and become something people live with every day.</p>
+
+                    <p>I sold dozens of props to performers across Europe. But the rigid demands of a performance prop —
+                        built to survive being thrown, dropped, and beaten up on stage night after night — made it too
+                        expensive to take into full production.</p>
+
+                    <p>Without wanting to see the flowers go to waste, the personal lamp pivot was a great opportunity
+                        to get more of them out into the world.</p>
+
+                    <p>The ingredients were already there. And without the need to armor everything against the beating
+                        of live movement, I could finally go back and add in the original LED strips in every petal —
+                        exactly as I'd first imagined.</p>
+
+                    <p>It could already hear music. It could already feel movement. All that was left was to give it a
+                        sense of touch, and I'd have a genuinely sensible lamp for the home.</p>
+
+                    <p>Then winter came. I found myself alone in the dark, too busy to really connect — and I wondered
+                        if I could send a small poke of light to the people I loved, without needing to fully engage.
+                    </p>
+
+                    <p>Such a small, powerful thing to build. So much technology demands our attention, and even the
+                        technology built to connect us seems to demand even more of it. I wanted to make something
+                        different — something that, in a stressed and lonelier world, just sends a little bit of
+                        presence, without asking for much in return.</p>
+                </div>
+
+                <div class="gallery-grid">
+                    <div class="gallery-feature">
+                        <video
+                            src="https://res.cloudinary.com/dfz5m8dzp/video/upload/v1775347216/20260401_150008_1_mbzwhf.mp4"
+                            autoplay loop muted playsinline></video>
+                        <div class="gallery-feature-caption">
+                            <span>The discovery</span>
+                            I already had a lamp in my hands.
+                        </div>
+                    </div>
+                    <img src="https://res.cloudinary.com/dfz5m8dzp/image/upload/v1773620487/20241102_190205_t5gvio.jpg"
+                        alt="Petals in action" class="gallery-item">
+                    <video
+                        src="https://res.cloudinary.com/dfz5m8dzp/video/upload/v1773620497/20250815_011041_vo1sbz.mp4"
+                        autoplay loop muted playsinline class="gallery-item"></video>
+                    <video
+                        src="https://res.cloudinary.com/dfz5m8dzp/video/upload/v1773620489/20250129_175740_jbajxz.mp4"
+                        autoplay loop muted playsinline class="gallery-item"></video>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="market-section">
+        <div class="market-container">
+            <div class="market-header">
+                <h2>Why CapSoul Petals is the Future of Home Lighting</h2>
+                <p>The Market</p>
+            </div>
+
+            <div class="market-intro">
+                <p>Smart lighting is a $27–34B market growing ~20% annually — but nearly all of that growth is
+                    connectivity and efficiency (dimmers, voice control, energy savings). None of it addresses emotional
+                    connection. Meanwhile, the WHO estimates 1 in 6 people worldwide experience persistent loneliness,
+                    serious enough that the U.S. Surgeon General classified it as a public health epidemic. That's the
+                    gap we fill.</p>
+            </div>
+
+            <div class="market-grid">
+                <div class="market-card">
+                    <div class="market-number">01</div>
+                    <h3>Adapptation not reinvention</h3>
+                    <p>The expensive and time consuming development of the technology has already been taken care of
+                        from my 2 years of development of the flower petal. Adapting for the static home is an
+                        easier and more straightforward task. The chip has proven it'self reliable in a much more
+                        dynamic and tough environment already.
+                        not inventing it from scratch — low R&D risk, fast path to market.</p>
+                </div>
+
+                <div class="market-card">
+                    <div class="market-number">02</div>
+                    <h3>A New Category: Emotional Infrastructure</h3>
+                    <p>The market splits into low-utility "friendship lamps" and emotionless smart bulbs. We're the
+                        category between them — real room lighting with real emotional presence. Fidget with it. Sing to
+                        it. Move near it. With close sensor mode on, someone who matters to you — a partner, a friend,
+                        grandma across town — sees your mood arrive as light, without you saying a word.</p>
+                </div>
+
+                <div class="market-card">
+                    <div class="market-number">03</div>
+                    <h3>One Ecosystem, Not One Lamp</h3>
+                    <p>The removable Core carries your settings and doubles as a personal accent light — carry it, move
+                        it, hand it to someone. Dock it into any Base, and it becomes full room lighting in a spot
+                        you've already chosen. One Core, multiple Bases already placed around your home — accent
+                        lighting and smart lighting, finally one expandable system. Core-to-Base pairing runs on
+                        ESP-NOW: instant, local, no app setup.</p>
+                </div>
+
+                <div class="market-card">
+                    <div class="market-number">04</div>
+                    <h3>Privacy by Design</h3>
+                    <p>We sense a room's energy — sound, movement — entirely on-device. No cameras, no recorded audio,
+                        nothing transmitted. Just light, no data trail.</p>
+                </div>
+
+                <div class="market-card">
+                    <div class="market-number">05</div>
+                    <h3>A Style Relationship, Not a Single Purchase</h3>
+                    <p>Swappable petals mean seasonal drops, collabs, and accessory sales on top of the core product.
+                    </p>
+                </div>
+            </div>
+
+            <div class="market-conclusion">
+                <h2>We Do More Than Any Lamp</h2>
+                <p class="section-lead">Standard distance lamps stop at a soft color tap. CapSoul Petals is a full-room
+                    ambient platform designed for dynamic, everyday living — built to outpace connection lamps like
+                    Luvlink.</p>
+
+                <div class="comparison-table-wrapper">
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th class="col-competitor">Standard Lamp (Luvlink)</th>
+                                <th class="col-capsoul">CapSoul Petals</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="feature-label">Illumination</td>
+                                <td class="cell-competitor">
+                                    <div class="cmp-row">
+                                        <span class="cmp-mark partial">~</span>
+                                        <span>Soft accent glow</span>
+                                    </div>
+                                </td>
+                                <td class="cell-capsoul">
+                                    <div class="cmp-row">
+                                        <span class="cmp-mark yes">✓</span>
+                                        <span>Bright, room-filling ambient lighting</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="feature-label">Connection &amp; Sync</td>
+                                <td class="cell-competitor">
+                                    <div class="cmp-row">
+                                        <span class="cmp-mark partial">~</span>
+                                        <span>Basic remote color touch</span>
+                                    </div>
+                                </td>
+                                <td class="cell-capsoul">
+                                    <div class="cmp-row">
+                                        <span class="cmp-mark yes">✓</span>
+                                        <span>CapSoul pairing to sync instantly with loved ones</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="feature-label">Local Control</td>
+                                <td class="cell-competitor">
+                                    <div class="cmp-row">
+                                        <span class="cmp-mark partial">~</span>
+                                        <span>Single-touch color change</span>
+                                    </div>
+                                </td>
+                                <td class="cell-capsoul">
+                                    <div class="cmp-row">
+                                        <span class="cmp-mark yes">✓</span>
+                                        <span>Individual petal touch controls</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="feature-label">Audio &amp; Motion</td>
+                                <td class="cell-competitor">
+                                    <div class="cmp-row">
+                                        <span class="cmp-mark no">✕</span>
+                                        <span>None</span>
+                                    </div>
+                                </td>
+                                <td class="cell-capsoul">
+                                    <div class="cmp-row">
+                                        <span class="cmp-mark yes">✓</span>
+                                        <span>Onboard mic for real-time music reactivity</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="feature-label">Mood Detection</td>
+                                <td class="cell-competitor">
+                                    <div class="cmp-row">
+                                        <span class="cmp-mark no">✕</span>
+                                        <span>None</span>
+                                    </div>
+                                </td>
+                                <td class="cell-capsoul">
+                                    <div class="cmp-row">
+                                        <span class="cmp-mark yes">✓</span>
+                                        <span>Onboard gesture &amp; mood sensing</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="feature-label">Hardware Versatility</td>
+                                <td class="cell-competitor">
+                                    <div class="cmp-row">
+                                        <span class="cmp-mark no">✕</span>
+                                        <span>Fixed enclosure</span>
+                                    </div>
+                                </td>
+                                <td class="cell-capsoul">
+                                    <div class="cmp-row">
+                                        <span class="cmp-mark yes">✓</span>
+                                        <span>Swappable, modular petals and bases</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p class="conclusion-summary">
+                    CapSoul Petals expands one Core at a time, and gifts one Base at a time — giving you a dynamic,
+                    high-performance light <em>today</em> and room to grow tomorrow.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section class="emotional-closing">
+        <div class="emotional-container">
+            <h2>Why do you care? It's just a lamp.</h2>
+
+            <p>90% of the time, that's exactly what it is. But some days aren't like the other 90 — and on those days,
+                it's not the light you notice.</p>
+
+            <p class="emotional-highlight">It's the warmth of knowing it's their light coming through.</p>
+
+            <p>The world's getting lonelier, and needier, and technology keeps asking more of us instead of less. We
+                built something that asks for nothing — it just lets the people who care about you know you're there.
+            </p>
+        </div>
+    </section>
+
+    <section class="footer">
+        <h2>Fascinated by the design?</h2>
+        <button class="cta-button">Pre-order Now</button>
+    </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('scrollContainer');
+            const elements = {
+                images: document.querySelectorAll('.sequence-image'),
+                texts: document.querySelectorAll('.step-text'),
+                dots: document.querySelectorAll('.step-dot')
+            };
+            const totalSteps = elements.images.length;
+            let currentActiveIndex = -1;
+
+            function handleScroll() {
+                const rect = container.getBoundingClientRect();
+                const containerTop = rect.top;
+                const containerHeight = rect.height;
+                const windowHeight = window.innerHeight;
+
+                // Calculate scroll progress relative to the container
+                let progress = -containerTop / (containerHeight - windowHeight);
+
+                // Clamp progress between 0 and 1
+                progress = Math.max(0, Math.min(1, progress));
+
+                // Determine active index based on progress
+                let activeIndex = Math.floor(progress * totalSteps);
+                if (activeIndex >= totalSteps) {
+                    activeIndex = totalSteps - 1;
+                }
+
+                // Only update DOM if the active index has changed to improve performance
+                if (activeIndex !== currentActiveIndex) {
+                    // Remove active class from all
+                    Object.values(elements).forEach(nodeList => {
+                        nodeList.forEach(el => el.classList.remove('active'));
+                    });
+
+                    // Add active class to current index
+                    if (elements.images[activeIndex]) elements.images[activeIndex].classList.add('active');
+                    if (elements.texts[activeIndex]) elements.texts[activeIndex].classList.add('active');
+                    if (elements.dots[activeIndex]) elements.dots[activeIndex].classList.add('active');
+
+                    currentActiveIndex = activeIndex;
+                }
+            }
+
+            // Logic for the second scroll section
+            const splitContainer = document.getElementById('splitScrollContainer');
+            const leftCap = document.querySelector('.left-capsule');
+            const rightCap = document.querySelector('.right-capsule');
+            const connText = document.querySelector('.connection-text');
+            const leftBase = document.querySelector('.left-base');
+            const rightBase = document.querySelector('.right-base');
+            const connLine = document.querySelector('.connecting-line');
+
+            function handleSplitScroll() {
+                const rect = splitContainer.getBoundingClientRect();
+                const containerTop = rect.top;
+                const containerHeight = rect.height;
+                const windowHeight = window.innerHeight;
+
+                let progress = -containerTop / (containerHeight - windowHeight);
+                progress = Math.max(0, Math.min(1, progress));
+
+                // 0.0 to 0.4: Text scales up, capsules move apart horizontally
+                let phase1 = Math.min(progress / 0.4, 1);
+
+                // 0.4 to 0.7: Capsules drop down into bases
+                let phase2 = Math.max(0, Math.min((progress - 0.4) / 0.3, 1));
+
+                // 0.7 to 1.0: Line connects them
+                let phase3 = Math.max(0, Math.min((progress - 0.7) / 0.3, 1));
+
+                // Text animation
+                connText.style.opacity = phase1;
+                connText.style.transform = `scale(${0.5 + 0.5 * phase1})`;
+
+                // Capsule Movement
+                const isMobile = window.innerWidth <= 768;
+                let startOffset = 10; // vw apart initially (side-by-side)
+                let xMove = startOffset + phase1 * (isMobile ? 25 : 20); // vw
+                let yMove = phase2 * 25; // vh
+
+                leftCap.style.transform = `translate(calc(-50% - ${xMove}vw), calc(-50% + ${yMove}vh))`;
+                rightCap.style.transform = `translate(calc(-50% + ${xMove}vw), calc(-50% + ${yMove}vh))`;
+
+                // Bases appear
+                leftBase.style.opacity = phase2;
+                rightBase.style.opacity = phase2;
+
+                // Connecting line
+                connLine.style.opacity = phase3 > 0 ? 1 : 0;
+                let maxLineWidth = isMobile ? 70 : 60;
+                connLine.style.width = `${phase3 * maxLineWidth}vw`;
+            }
+
+            // SVG Room LED Scroll Logic
+            const ledContainer = document.getElementById('ledScrollContainer');
+            const roomDarkness = document.getElementById('roomDarkness');
+            const medBodyHalo = document.getElementById('medBodyHalo');
+            const medWallTintRect = document.getElementById('medWallTintRect');
+            const roomLightFull = document.getElementById('roomLightFull');
+            const fullWallTintRect = document.getElementById('fullWallTintRect');
+            const lampMedImg = document.getElementById('lampMedImg');
+            const lampMedGlow = document.getElementById('lampMedGlow');
+            const lampFullImg1 = document.getElementById('lampFullImg1');
+            const lampFullImg2 = document.getElementById('lampFullImg2');
+            const lampFullImg3 = document.getElementById('lampFullImg3');
+            const lampFullGlow = document.getElementById('lampFullGlow');
+            const ledMediumText = document.getElementById('ledMediumText');
+            const ledFullText = document.getElementById('ledFullText');
+
+            function remap(val, inMin, inMax) {
+                return Math.max(0, Math.min(1, (val - inMin) / (inMax - inMin)));
+            }
+
+            function setAttr(el, val) {
+                if (el) el.setAttribute('opacity', val.toFixed(3));
+            }
+
+            function handleLedScroll() {
+                if (!ledContainer) return;
+                const rect = ledContainer.getBoundingClientRect();
+                const containerTop = rect.top;
+                const containerHeight = rect.height;
+                const windowHeight = window.innerHeight;
+
+                let progress = -containerTop / (containerHeight - windowHeight);
+                progress = Math.max(0, Math.min(1, progress));
+
+                // --- PHASE 1: darkness clears, medium lamp appears with personal halo ---
+                // Darkness fades as medium lamp comes on
+                const darkness = Math.max(0, 0.98 - remap(progress, 0.02, 0.25) * 0.98);
+                setAttr(roomDarkness, darkness);
+
+                // Medium lamp body transition (med1 when dim -> med2 when fully lit)
+                const medRise = remap(progress, 0.04, 0.22);
+                let medOpacity1 = 0;
+                let medOpacity2 = 0;
+                if (medRise < 0.4) {
+                    medOpacity1 = medRise / 0.4;
+                    medOpacity2 = 0;
+                } else if (medRise < 0.8) {
+                    medOpacity1 = 1.0 - (medRise - 0.4) / 0.4;
+                    medOpacity2 = (medRise - 0.4) / 0.4;
+                } else {
+                    medOpacity1 = 0;
+                    medOpacity2 = 1.0;
+                }
+                setAttr(lampMedImg, medOpacity1);
+
+                // Medium lamp glow image (filtered glow layer, sits ON TOP of darkness)
+                setAttr(lampMedGlow, medOpacity2 * 0.9);
+
+                // Tight personal-space halo: rise 0→0.28, hold, fade 0.55→0.68
+                const medHaloRise = remap(progress, 0.04, 0.28);
+                const medHaloFade = 1 - remap(progress, 0.55, 0.68);
+                const medHalo = Math.min(medHaloRise, medHaloFade);
+                setAttr(medBodyHalo, medHalo * 0.88);
+                setAttr(medWallTintRect, medHalo * 0.70);
+
+                // Medium card text (slides in from left now)
+                if (ledMediumText) {
+                    ledMediumText.style.opacity = medHalo.toFixed(3);
+                    ledMediumText.style.transform = `translateX(${-40 + medHalo * 40}px)`;
+                }
+
+                // --- PHASE 2 (hold 0.28–0.50): medium stays bright, nothing new ---
+
+                // --- PHASE 3: full lamp surges in from left, floods the room ---
+                // We stop animating at 0.75 so the rest of the scroll is dead space for reading
+                const fullRise = remap(progress, 0.55, 0.75);
+
+                // Full lamp body fades in with transition:
+                // LARGE1 (dim) -> LARGE2 (mid) -> LARGE3 (fully lit)
+                let opacity1 = 0;
+                let opacity2 = 0;
+                let opacity3 = 0;
+                if (fullRise < 0.2) {
+                    opacity1 = fullRise / 0.2;
+                    opacity2 = 0;
+                    opacity3 = 0;
+                } else if (fullRise < 0.5) {
+                    opacity1 = 1.0 - (fullRise - 0.2) / 0.3;
+                    opacity2 = (fullRise - 0.2) / 0.3;
+                    opacity3 = 0;
+                } else if (fullRise < 0.8) {
+                    opacity1 = 0;
+                    opacity2 = 1.0 - (fullRise - 0.5) / 0.3;
+                    opacity3 = (fullRise - 0.5) / 0.3;
+                } else {
+                    opacity1 = 0;
+                    opacity2 = 0;
+                    opacity3 = 1.0;
+                }
+
+                setAttr(lampFullImg1, opacity1);
+                setAttr(lampFullImg2, opacity2);
+                setAttr(lampFullImg3, opacity3);
+
+                // Full lamp glow image (filtered, large bloom) - rises with fully lit state
+                setAttr(lampFullGlow, opacity3 * 0.85);
+
+                // Wide room-flooding radial light
+                setAttr(roomLightFull, fullRise * 0.90);
+                setAttr(fullWallTintRect, fullRise * 0.75);
+
+                // Full card text (slides in from right now)
+                if (ledFullText) {
+                    ledFullText.style.opacity = fullRise.toFixed(3);
+                    ledFullText.style.transform = `translateX(${40 - fullRise * 40}px)`;
+                }
+            }
+
+            // Use requestAnimationFrame for smoother scroll handling
+            let ticking = false;
+            window.addEventListener('scroll', () => {
+                if (!ticking) {
+                    window.requestAnimationFrame(() => {
+                        handleScroll();
+                        handleSplitScroll();
+                        handleLedScroll();
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            }, { passive: true });
+
+            // Modularity Interactive Customizer Logic
+            const optionCards = document.querySelectorAll('.option-card');
+            const previewDisplay = document.getElementById('preview-display');
+            const previewPetalName = document.getElementById('preview-petal-name');
+            const previewBaseName = document.getElementById('preview-base-name');
+            const previewGlow = document.querySelector('.preview-glow');
+
+            const previewImages = {
+                'full-pot': 'https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036026/pfl_lamp/LBLUE.png',
+                'full-flat': 'https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036125/pfl_lamp/LSTRAW.png',
+                'medium-pot': 'https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036034/pfl_lamp/med2.png',
+                'medium-flat': 'https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036032/pfl_lamp/med1.png',
+                'small-pot': 'https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036036/pfl_lamp/DARK_BASE.png',
+                'small-flat': 'https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036036/pfl_lamp/DARK_BASE.png'
+            };
+
+            const glowColors = {
+                'full': 'rgba(56, 189, 248, 0.3)',
+                'medium': 'rgba(168, 85, 247, 0.25)',
+                'small': 'rgba(236, 72, 153, 0.25)'
+            };
+
+            let currentPetal = 'full';
+            let currentBase = 'pot';
+
+            function updatePreview() {
+                const key = `${currentPetal}-${currentBase}`;
+                const imgSrc = previewImages[key] || 'https://res.cloudinary.com/dfz5m8dzp/image/upload/v1785036026/pfl_lamp/LBLUE.png';
+
+                // Fade out
+                if (previewDisplay) {
+                    previewDisplay.style.opacity = '0';
+                    previewDisplay.style.transform = 'scale(0.95)';
+                }
+
+                setTimeout(() => {
+                    if (previewDisplay) {
+                        previewDisplay.src = imgSrc;
+                        previewDisplay.style.opacity = '1';
+                        previewDisplay.style.transform = 'scale(1)';
+                    }
+
+                    // Update texts
+                    const petalCard = document.querySelector(`.option-card[data-type="petal"][data-value="${currentPetal}"]`);
+                    const baseCard = document.querySelector(`.option-card[data-type="base"][data-value="${currentBase}"]`);
+
+                    if (petalCard && previewPetalName) {
+                        previewPetalName.textContent = petalCard.getAttribute('data-name');
+                    }
+                    if (baseCard && previewBaseName) {
+                        previewBaseName.textContent = baseCard.getAttribute('data-name');
+                    }
+
+                    // Update glow color
+                    if (previewGlow) {
+                        const glowColor = glowColors[currentPetal];
+                        previewGlow.style.background = `radial-gradient(circle, ${glowColor} 0%, rgba(168, 85, 247, 0.05) 60%, transparent 100%)`;
+                    }
+                }, 150);
+            }
+
+            optionCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    const type = card.getAttribute('data-type');
+                    const value = card.getAttribute('data-value');
+
+                    // Deactivate sibling cards in the same group
+                    const grid = card.closest('.options-grid');
+                    grid.querySelectorAll('.option-card').forEach(c => c.classList.remove('active'));
+
+                    // Activate current card
+                    card.classList.add('active');
+
+                    // Update selection state
+                    if (type === 'petal') {
+                        currentPetal = value;
+                    } else if (type === 'base') {
+                        currentBase = value;
+                    }
+
+                    updatePreview();
+                });
+            });
+
+            // Run initial update on load
+            updatePreview();
+
+            // Initial call to set correct state on load
+            handleScroll();
+            handleSplitScroll();
+            handleLedScroll();
+        });
+
+        // Manufacturing Section Toggle
+        function showMfgSection(type) {
+            // Hide all detail sections and placeholder
+            document.querySelectorAll('.mfg-detail').forEach(el => {
+                el.style.display = 'none';
+                el.style.opacity = '0';
+            });
+            document.getElementById('mfgPlaceholder').style.display = 'none';
+
+            // Remove active class from all cards
+            document.querySelectorAll('.part-card').forEach(card => card.classList.remove('active-card'));
+
+            const section = document.getElementById('mfg-' + type);
+            const card = document.getElementById('card-' + type);
+
+            if (section) {
+                section.style.display = 'block';
+                void section.offsetWidth;
+                section.style.opacity = '1';
+                // No scrollIntoView — content appears in the panel beside the cards
+            }
+            if (card) {
+                card.classList.add('active-card');
+            }
+        }
+
+        // Initialize Base Crossover Chart
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('crossoverChartBase');
+            if (canvas && window.Chart) {
+                const ctx = canvas.getContext('2d');
+                const fdmFn = x => 2000 + 2.5 * x;
+                const moldFn = x => 5000 + 1.5 * x;
+
+                const labels = [];
+                const fdmData = [];
+                const moldData = [];
+                for (let x = 0; x <= 10000; x += 250) {
+                    labels.push(x);
+                    fdmData.push(fdmFn(x));
+                    moldData.push(moldFn(x));
+                }
+
+                const crossoverLinePlugin = {
+                    id: 'crossoverLine',
+                    afterDraw(chart) {
+                        const { ctx, chartArea, scales } = chart;
+                        const xPixel = scales.x.getPixelForValue(3000);
+                        if (xPixel < chartArea.left || xPixel > chartArea.right) return;
+
+                        ctx.save();
+                        ctx.strokeStyle = 'rgba(255,140,66,0.55)';
+                        ctx.lineWidth = 1.5;
+                        ctx.setLineDash([5, 5]);
+                        ctx.beginPath();
+                        ctx.moveTo(xPixel, chartArea.top);
+                        ctx.lineTo(xPixel, chartArea.bottom);
+                        ctx.stroke();
+
+                        ctx.setLineDash([]);
+                        ctx.fillStyle = '#ff8c42';
+                        ctx.beginPath();
+                        ctx.arc(xPixel, scales.y.getPixelForValue(fdmFn(3000)), 4, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.font = "600 10.5px 'JetBrains Mono', monospace";
+                        ctx.fillStyle = '#ff8c42';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('CROSSOVER · 3,000 UNITS', xPixel, chartArea.top + 14);
+                        ctx.restore();
+                    }
+                };
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'FDM (PETG)',
+                                data: fdmData,
+                                borderColor: '#4fd1e8',
+                                backgroundColor: 'rgba(79,209,232,0.08)',
+                                borderWidth: 2.5,
+                                pointRadius: 0,
+                                fill: true,
+                                tension: 0
+                            },
+                            {
+                                label: 'Injection Molding',
+                                data: moldData,
+                                borderColor: '#ff8c42',
+                                backgroundColor: 'rgba(255,140,66,0.05)',
+                                borderWidth: 2.5,
+                                pointRadius: 0,
+                                fill: true,
+                                tension: 0
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#0f2138',
+                                borderColor: 'rgba(79,209,232,0.3)',
+                                borderWidth: 1,
+                                titleFont: { family: 'JetBrains Mono', size: 11 },
+                                bodyFont: { family: 'JetBrains Mono', size: 11 },
+                                padding: 10,
+                                callbacks: {
+                                    title: items => `${Number(items[0].label).toLocaleString()} units`,
+                                    label: item => `${item.dataset.label}: $${Math.round(item.parsed.y).toLocaleString()}`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                min: 0,
+                                max: 10000,
+                                grid: { color: 'rgba(79,209,232,0.08)' },
+                                ticks: {
+                                    color: '#5e7891',
+                                    font: { family: 'JetBrains Mono', size: 10 },
+                                    callback: v => v >= 1000 ? (v / 1000) + 'k' : v,
+                                    stepSize: 2000
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'PRODUCTION VOLUME (UNITS)',
+                                    color: '#5e7891',
+                                    font: { family: 'JetBrains Mono', size: 10, weight: '500' }
+                                }
+                            },
+                            y: {
+                                grid: { color: 'rgba(79,209,232,0.08)' },
+                                ticks: {
+                                    color: '#5e7891',
+                                    font: { family: 'JetBrains Mono', size: 10 },
+                                    callback: v => '$' + (v / 1000) + 'k'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'TOTAL COST (USD)',
+                                    color: '#5e7891',
+                                    font: { family: 'JetBrains Mono', size: 10, weight: '500' }
+                                }
+                            }
+                        }
+                    },
+                    plugins: [crossoverLinePlugin]
+                });
+            }
+        });
+
+        function setMode(mode) {
+            // Update buttons
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('btn-' + mode).classList.add('active');
+
+            // Update descriptions
+            document.querySelectorAll('.mode-desc-box').forEach(box => box.classList.remove('active'));
+            document.getElementById('desc-' + mode).classList.add('active');
+
+            // Update image glow
+            const img = document.getElementById('modeBaseImg');
+            img.className = 'mode-base-img glow-' + mode;
+        }
+    </script>
+</body>
+
+</html>
