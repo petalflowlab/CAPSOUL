@@ -712,6 +712,34 @@
             line-height: 1.3;
         }
 
+        .modularity-videos {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2.5rem;
+            margin-top: 5rem;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .modularity-video-wrapper {
+            flex: 1 1 280px;
+            max-width: 340px;
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(10px);
+        }
+
+        .modularity-video-wrapper video {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+        }
+
         @media (max-width: 968px) {
             .modularity-container {
                 flex-direction: column;
@@ -3091,6 +3119,222 @@
                 padding: 0.25rem 0.35rem 0.75rem;
             }
         }
+
+        /* =============================== */
+        /* CapSoul Core Section */
+        /* =============================== */
+        .core-section {
+            padding: 8rem 2rem;
+            background-color: #020617;
+            position: relative;
+            z-index: 2;
+        }
+
+        .core-container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .core-header {
+            text-align: center;
+            margin-bottom: 5rem;
+        }
+
+        .core-header p.core-eyebrow {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #38bdf8;
+            margin: 0 0 1rem 0;
+        }
+
+        .core-header h2 {
+            font-size: 3rem;
+            margin: 0 0 1rem 0;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .core-header p.core-subtitle {
+            font-size: 1.2rem;
+            color: #94a3b8;
+        }
+
+        .core-diagram {
+            position: relative;
+            max-width: 980px;
+            margin: 0 auto;
+            min-height: 680px;
+        }
+
+        .core-diagram-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .core-diagram-svg line {
+            stroke: #38bdf8;
+            stroke-width: 0.18;
+            stroke-dasharray: 1 1;
+            opacity: 0.5;
+        }
+
+        .core-diagram-svg circle.core-anchor {
+            fill: #020617;
+            stroke: #38bdf8;
+            stroke-width: 0.25;
+        }
+
+        .core-diagram-svg circle.core-anchor-dot {
+            fill: #38bdf8;
+        }
+
+        .core-image-wrap {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 360px;
+            height: 360px;
+            z-index: 1;
+        }
+
+        .core-image-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            -webkit-mask-image: radial-gradient(circle, black 42%, transparent 72%);
+            mask-image: radial-gradient(circle, black 42%, transparent 72%);
+            filter: saturate(1.05) brightness(1.02);
+        }
+
+        .core-image-glow {
+            position: absolute;
+            inset: -50px;
+            background: radial-gradient(circle, rgba(129, 140, 248, 0.18) 0%, transparent 65%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .core-callout {
+            position: absolute;
+            width: 250px;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.15rem 1.35rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+            z-index: 2;
+        }
+
+        .core-callout:hover {
+            transform: translateY(-3px);
+            border-color: rgba(56, 189, 248, 0.4);
+        }
+
+        .core-callout .core-callout-label {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #38bdf8;
+            margin: 0 0 0.4rem 0;
+        }
+
+        .core-callout .core-callout-text {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.92rem;
+            line-height: 1.5;
+            color: #cbd5e1;
+            margin: 0;
+        }
+
+        #core-callout-1 {
+            top: 2%;
+            left: 0%;
+        }
+
+        #core-callout-2 {
+            top: 2%;
+            right: 0%;
+        }
+
+        #core-callout-3 {
+            top: 40%;
+            left: -1%;
+        }
+
+        #core-callout-4 {
+            top: 40%;
+            right: -1%;
+        }
+
+        #core-callout-5 {
+            top: 78%;
+            left: 0%;
+        }
+
+        #core-callout-6 {
+            top: 78%;
+            right: 0%;
+        }
+
+        .core-caption {
+            text-align: center;
+            max-width: 620px;
+            margin: 2rem auto 0;
+            font-size: 1rem;
+            line-height: 1.7;
+            color: #94a3b8;
+            padding-top: 2.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .core-caption strong {
+            color: #38bdf8;
+            font-weight: 700;
+        }
+
+        @media (max-width: 860px) {
+            .core-diagram-svg {
+                display: none;
+            }
+
+            .core-diagram {
+                min-height: unset;
+            }
+
+            .core-image-wrap {
+                position: static;
+                transform: none;
+                width: 240px;
+                height: 240px;
+                margin: 0 auto 2rem;
+            }
+
+            .core-image-glow {
+                display: none;
+            }
+
+            .core-callout {
+                position: static;
+                width: 100%;
+                margin-bottom: 1rem;
+            }
+
+            .core-header h2 {
+                font-size: 2.5rem;
+            }
+        }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -3203,6 +3447,83 @@
         </div>
     </div>
 
+    <section class="core-section">
+        <div class="core-container">
+            <div class="core-header">
+                <p class="core-eyebrow">Component Spec — CapSoul Core</p>
+                <h2>What's in a Petal CapSoul?</h2>
+                <p class="core-subtitle">The brains of the lamp — and the only piece you ever really own.</p>
+            </div>
+
+            <div class="core-diagram">
+
+                <svg class="core-diagram-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <!-- Anchor points on the capsule -->
+                    <circle class="core-anchor" cx="50" cy="30" r="1.4" />
+                    <circle class="core-anchor-dot" cx="50" cy="30" r="0.5" />
+                    <circle class="core-anchor" cx="42" cy="48" r="1.4" />
+                    <circle class="core-anchor-dot" cx="42" cy="48" r="0.5" />
+                    <circle class="core-anchor" cx="38" cy="68" r="1.4" />
+                    <circle class="core-anchor-dot" cx="38" cy="68" r="0.5" />
+
+                    <!-- Leader lines: callout 1 (top-left) -->
+                    <line x1="20" y1="8" x2="48" y2="29" />
+                    <!-- callout 2 (top-right) -->
+                    <line x1="80" y1="8" x2="52" y2="29" />
+                    <!-- callout 3 (mid-left) -->
+                    <line x1="18" y1="44" x2="41" y2="47" />
+                    <!-- callout 4 (mid-right) -->
+                    <line x1="82" y1="44" x2="45" y2="49" />
+                    <!-- callout 5 (bottom-left) -->
+                    <line x1="20" y1="80" x2="37" y2="69" />
+                    <!-- callout 6 (bottom-right) -->
+                    <line x1="80" y1="80" x2="40" y2="69" />
+                </svg>
+
+                <div class="core-image-wrap">
+                    <div class="core-image-glow"></div>
+                    <img src="capsoul.png" alt="CapSoul Core capsule, glowing purple and blue">
+                </div>
+
+                <div class="core-callout" id="core-callout-1">
+                    <p class="core-callout-label">Touch &amp; Click</p>
+                    <p class="core-callout-text">Touch proximity sensor on top, plus a click button. That's all.</p>
+                </div>
+
+                <div class="core-callout" id="core-callout-2">
+                    <p class="core-callout-label">ESP32 Brain</p>
+                    <p class="core-callout-text">Remembers your preferences, wherever you go.</p>
+                </div>
+
+                <div class="core-callout" id="core-callout-3">
+                    <p class="core-callout-label">Accent Lighting</p>
+                    <p class="core-callout-text">16 animated accent LEDs.</p>
+                </div>
+
+                <div class="core-callout" id="core-callout-4">
+                    <p class="core-callout-label">Feels Every Movement</p>
+                    <p class="core-callout-text">Feels every tap, nudge, and orientation change.</p>
+                </div>
+
+                <div class="core-callout" id="core-callout-5">
+                    <p class="core-callout-label">Power</p>
+                    <p class="core-callout-text">USB for power and data.</p>
+                </div>
+
+                <div class="core-callout" id="core-callout-6">
+                    <p class="core-callout-label">Onboard Mic</p>
+                    <p class="core-callout-text">Hears your voice or music and turns it into Light Language.</p>
+                </div>
+
+            </div>
+
+            <p class="core-caption">
+                Dock into any Base. Carry it, it's your light. Dock it, it's the room's — your
+                <strong>wireless controller and mood receiver</strong>.
+            </p>
+        </div>
+    </section>
+
     <section class="modularity-section">
         <div class="modularity-header">
             <h2>Endless Modularity</h2>
@@ -3291,6 +3612,20 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Demonstration Videos -->
+        <div class="modularity-videos">
+            <div class="modularity-video-wrapper">
+                <video autoplay loop muted playsinline>
+                    <source src="https://res.cloudinary.com/xmy4qvxk/video/upload/v1785431475/pomelli_creative_video_9_16_0730_x0x9rl.mp4" type="video/mp4">
+                </video>
+            </div>
+            <div class="modularity-video-wrapper">
+                <video autoplay loop muted playsinline>
+                    <source src="https://res.cloudinary.com/xmy4qvxk/video/upload/v1785431939/pomelli_creative_video_9_16_0730_1_cc9ewi.mp4" type="video/mp4">
+                </video>
             </div>
         </div>
     </section>
@@ -4503,7 +4838,8 @@
     </section>
 
     <section class="footer">
-      
+        <h2>Fascinated by the design?</h2>
+        <button class="cta-button">Pre-order Now</button>
     </section>
 
     <script>
